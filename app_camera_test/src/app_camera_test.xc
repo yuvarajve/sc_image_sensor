@@ -7,6 +7,7 @@
 #include <platform.h>
 #include <print.h>
 #include <stdint.h>
+#include <timer.h>
 
 #include "i2c.h"
 #include "lcd.h"
@@ -33,43 +34,69 @@ on tile[0] : sdram_ports sdramports = { //star slot
 
 // Sensor registers
 #define DEV_ADDR 0x48   // Seven most sig bits of 0x90 for write, 0x91 for read
+#define RESET_REG 0x0C
 #define CHIP_CNTL_REG 0x07
 #define READ_MODE_REG 0x0D
 #define TEST_PAT_REG 0x7F
-#define WIN_HEIGHT_REG 0x03
-#define WIN_WIDTH_REG 0x04
+#define WIN_HEIGHT_REG_A 0x03
+#define WIN_WIDTH_REG_A 0x04
+#define HOR_BLANK_REG_A 0x05
+#define WIN_HEIGHT_REG_B 0xCB
+#define WIN_WIDTH_REG_B 0xCC
+#define HOR_BLANK_REG_B 0xCD
+
+#define WIN_HEIGHT 272
+#define WIN_WIDTH 480
+#if (WIN_WIDTH<700)
+#define HOR_BLANK (700-WIN_WIDTH)
+#endif
 
 
 inline void generate_sysclk(){
-    configure_clock_rate_at_least(clk1,100,10);
+    configure_clock_rate_at_most(clk1,100,5);
+    configure_out_port(sys_clk, clk1, 0);
     configure_port_clock_output(sys_clk, clk1);
     start_clock(clk1);
 
 }
 
 void config_sensor(){
-    unsigned char dbytesR[2], dbytesW[2];
+    unsigned char i2c_data[2];
 
-    // Sensor configuration
-    i2c_master_read_reg(DEV_ADDR, CHIP_CNTL_REG, dbytesR, 2, i2c_ports);
-    printhex(dbytesR[0]); // MS byte
-    printhexln(dbytesR[1]); // LS byte
+    i2c_master_init(i2c_ports);
 
-    dbytesW[0] = 0x01; // MS byte of height=272
-    dbytesW[1] = 0x10; // LS byte
-    i2c_master_write_reg(DEV_ADDR, WIN_HEIGHT_REG, dbytesW, 2, i2c_ports);
+    i2c_master_read_reg(DEV_ADDR, RESET_REG, i2c_data, 2, i2c_ports);
+    i2c_data[1] |= 0x03;
+    i2c_master_write_reg(DEV_ADDR, RESET_REG, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
 
-    i2c_master_read_reg(DEV_ADDR, WIN_HEIGHT_REG, dbytesR, 2, i2c_ports);
-    printhex(dbytesR[0]); // MS byte
-    printhexln(dbytesR[1]); // LS byte
+    /*
+    i2c_master_read_reg(DEV_ADDR, CHIP_CNTL_REG, i2c_data, 2, i2c_ports);
+    dbytes[1] |= (0x03 << 3); // Set bits 3,4 for snapshot mode
+    i2c_master_write_reg(DEV_ADDR, 0x07, dbytes, 2, i2c_ports);
+    delay_milliseconds(1);
+    */
 
-    dbytesW[0] = 0x01; // MS byte of width=480
-    dbytesW[1] = 0xE0; // LS byte
-    i2c_master_write_reg(DEV_ADDR, WIN_WIDTH_REG, dbytesW, 2, i2c_ports);
+    i2c_data[0] = WIN_HEIGHT >> 8; // MS byte of height
+    i2c_data[1] = WIN_HEIGHT & 0xff; // LS byte
+    i2c_master_write_reg(DEV_ADDR, WIN_HEIGHT_REG_A, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
+    i2c_master_write_reg(DEV_ADDR, WIN_HEIGHT_REG_B, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
 
-    i2c_master_read_reg(DEV_ADDR, WIN_WIDTH_REG, dbytesR, 2, i2c_ports);
-    printhex(dbytesR[0]); // MS byte
-    printhexln(dbytesR[1]); // LS byte
+    i2c_data[0] = WIN_WIDTH >> 8; // MS byte of width
+    i2c_data[1] = WIN_WIDTH & 0xff; // LS byte
+    i2c_master_write_reg(DEV_ADDR, WIN_WIDTH_REG_A, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
+    i2c_master_write_reg(DEV_ADDR, WIN_WIDTH_REG_B, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
+
+    i2c_data[0] = HOR_BLANK >> 8; // MS byte of width
+    i2c_data[1] = HOR_BLANK & 0xff; // LS byte
+    i2c_master_write_reg(DEV_ADDR, HOR_BLANK_REG_A, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
+    i2c_master_write_reg(DEV_ADDR, HOR_BLANK_REG_B, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
 
 
 /*
@@ -77,24 +104,23 @@ void config_sensor(){
     dbytesW[1] = 0x08; // LS byte for col binning of 4
     i2c_master_write_reg(DEV_ADDR, READ_MODE_REG, dbytesW, 2, i2c_ports);
 
+    delay_milliseconds(1);
+
     i2c_master_read_reg(DEV_ADDR, READ_MODE_REG, dbytesR, 2, i2c_ports);
     printhex(dbytesR[0]); // MS byte
     printhexln(dbytesR[1]); // LS byte
 */
 
 
-    dbytesW[0] = 0x28; // MS byte; 0x30 for horizontal shade; 0x28 for vertical shade; 0x38 for diagonal shade;
-    dbytesW[1] = 0; // LS byte
-//    dbytesW[0] = 0x27; // MS byte; For fixed pattern white
-//    dbytesW[1] = 0xFF; // LS byte
-//    dbytesW[0] = 0x24; // MS byte; For fixed pattern black
-//    dbytesW[1] = 0; // LS byte
-    i2c_master_write_reg(DEV_ADDR, TEST_PAT_REG, dbytesW, 2, i2c_ports);
+    i2c_data[0] = 0x28; // MS byte; 0x30 for horizontal shade; 0x28 for vertical shade; 0x38 for diagonal shade;
+    i2c_data[1] = 0; // LS byte
+//    i2c_data[0] = 0x27; // MS byte; For fixed pattern white
+//    i2c_data[1] = 0xFF; // LS byte
+//    i2c_data[0] = 0x24; // MS byte; For fixed pattern black
+//    i2c_data[1] = 0; // LS byte
+    i2c_master_write_reg(DEV_ADDR, TEST_PAT_REG, i2c_data, 2, i2c_ports);
 
-    i2c_master_read_reg(DEV_ADDR, TEST_PAT_REG, dbytesR, 2, i2c_ports);
-    printhex(dbytesR[0]); // MS byte
-    printhexln(dbytesR[1]); // LS byte
-
+    printstrln("Camera configured .....");
 }
 
 inline void config_port(){
@@ -130,15 +156,26 @@ void read_data(streaming chanend c){
 	frame_valid when pinseq(0) :> void;
 	frame_valid when pinseq(1) :> void; // wait for a valid frame
 
+
     setc(data_port);
+    /*
 	for (unsigned i=0; i<LCD_HEIGHT*LCD_ROW_WORDS; i++){
 //    for (unsigned i=0; i<LCD_ROW_WORDS; i++){
 	    unsigned data;
 	    data = do_input(data_port);
 	    c <: data;
+//printhexln(data);
 //	    c <: 0xf800f800;
 	}
+	*/
 
+	do{
+	    unsigned data;
+	    data = do_input(data_port);
+	    c <: data;
+	} while (peek(frame_valid));
+
+	printstrln ("Frame captured ...");
 }
 
 
@@ -150,6 +187,11 @@ inline unsafe void get_row(streaming chanend c, unsigned * unsafe dataPtr){
     for (unsigned i=0; i<LCD_ROW_WORDS; i++){
         c :> *(dataPtr++);
     }
+
+//for (unsigned i=0; i<LCD_ROW_WORDS; i++){
+//    printhexln( *(--dataPtr));
+//}
+
 //t:>t2;
 //return(t2-t1);
 }
@@ -194,6 +236,8 @@ void color_interpolation(chanend c_dc, unsigned frBuf){
 
         display_controller_image_read_line(c_dc, i, frBuf, buf[i%3]);
         display_controller_wait_until_idle(c_dc, buf[i%3]);
+//for (unsigned j=0; j<LCD_ROW_WORDS; j++) printhexln(buf[i%3][j]);
+//printhexln(buf[i%3][50]);
 
         if (row&1){
             for (unsigned j=2; j<2*LCD_ROW_WORDS-1; j+=2){    // odd row, even col, green pix
@@ -281,7 +325,7 @@ void store_data(streaming chanend c, chanend c_dc){
 
     // Get frame & store
     unsafe {
-        readBufPtr = data1; storeBufPtr = data2;
+        readBufPtr = data1; storeBufPtr = data2;    // pointers to manage double buffer
         get_row (c,readBufPtr);
 
         for (unsigned r=1; r<LCD_HEIGHT; r++){
