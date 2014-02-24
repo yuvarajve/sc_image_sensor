@@ -121,11 +121,26 @@
 					<folderInfo id="com.xmos.cdt.toolchain.526688691.1593641623" name="/" resourcePath="">
 						<toolChain id="com.xmos.cdt.toolchain.1782874007" name="com.xmos.cdt.toolchain" superClass="com.xmos.cdt.toolchain">
 							<targetPlatform archList="all" binaryParser="com.xmos.cdt.core.XEBinaryParser" id="com.xmos.cdt.core.platform.471033963" isAbstract="false" osList="linux,win32,macosx" superClass="com.xmos.cdt.core.platform"/>
-							<builder appendEnvironment="true" arguments="CONFIG=Debug" environment="XTA_ENABLED=false|" id="com.xmos.cdt.builder.base.1304646134" keepEnvironmentInBuildfile="false" managedBuildOn="false" superClass="com.xmos.cdt.builder.base"/>
+							<builder appendEnvironment="true" arguments="CONFIG=Debug" environment="XTA_ENABLED=true|" id="com.xmos.cdt.builder.base.1304646134" keepEnvironmentInBuildfile="false" managedBuildOn="false" superClass="com.xmos.cdt.builder.base"/>
 							<tool id="com.xmos.cdt.xc.compiler.241309743" name="com.xmos.cdt.xc.compiler" superClass="com.xmos.cdt.xc.compiler">
 								<option id="com.xmos.xc.compiler.option.include.paths.1535711758" name="com.xmos.xc.compiler.option.include.paths" superClass="com.xmos.xc.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16160D}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L16}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V2_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V0}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src/devices}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.xc.compiler.input.1556643376" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
 							</tool>
@@ -133,6 +148,21 @@
 								<option id="com.xmos.c.compiler.option.include.paths.206249416" name="com.xmos.c.compiler.option.include.paths" superClass="com.xmos.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16160D}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L16}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V2_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V0}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src/devices}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.c.compiler.input.c.392431271" name="C" superClass="com.xmos.cdt.c.compiler.input.c"/>
 							</tool>
@@ -140,6 +170,21 @@
 								<option id="com.xmos.cxx.compiler.option.include.paths.1714058547" name="com.xmos.cxx.compiler.option.include.paths" superClass="com.xmos.cxx.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16160D}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L16}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V2_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V0}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src/devices}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.cxx.compiler.input.cpp.1278169372" name="C++" superClass="com.xmos.cdt.cxx.compiler.input.cpp"/>
 							</tool>
@@ -250,6 +295,21 @@
 								<option id="com.xmos.xc.compiler.option.include.paths.1913206484" name="com.xmos.xc.compiler.option.include.paths" superClass="com.xmos.xc.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16160D}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L16}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V2_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V0}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src/devices}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.xc.compiler.input.352424458" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
 							</tool>
@@ -257,6 +317,21 @@
 								<option id="com.xmos.c.compiler.option.include.paths.1211294417" name="com.xmos.c.compiler.option.include.paths" superClass="com.xmos.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16160D}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L16}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V2_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V0}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src/devices}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.c.compiler.input.c.45423189" name="C" superClass="com.xmos.cdt.c.compiler.input.c"/>
 							</tool>
@@ -264,6 +339,21 @@
 								<option id="com.xmos.cxx.compiler.option.include.paths.1414612671" name="com.xmos.cxx.compiler.option.include.paths" superClass="com.xmos.cxx.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L2}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16160D}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_slicekit_support/src/SLICEKIT-L16}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V2_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V1_IS42S16400F}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src/PINOUT_V0}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_lcd/src/devices}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_display_controller}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.cxx.compiler.input.cpp.1557775374" name="C++" superClass="com.xmos.cdt.cxx.compiler.input.cpp"/>
 							</tool>

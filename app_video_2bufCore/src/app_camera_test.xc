@@ -1,6 +1,3 @@
-/* Additions:
- * struct for ports,
- */
 
 // Sensor operating in master mode, Display on LCD using display controller
 
@@ -47,13 +44,16 @@ on tile[0] : sdram_ports sdramports = { //star slot
 
 #define WIN_HEIGHT 272
 #define WIN_WIDTH 480
-#if (WIN_WIDTH<700)
+
+
+#if (WIN_WIDTH<700)     // Total row time should be 690 cols for correct operation of ADC
 #define HOR_BLANK (700-WIN_WIDTH)
 #endif
 
+//#define HOR_BLANK 700
 
 inline void generate_sysclk(){
-    configure_clock_rate_at_most(clk1,100,5);
+    configure_clock_rate_at_most(clk1,100,4);
     configure_out_port(sys_clk, clk1, 0);
     configure_port_clock_output(sys_clk, clk1);
     start_clock(clk1);
@@ -70,12 +70,12 @@ void config_sensor(){
     i2c_master_write_reg(DEV_ADDR, RESET_REG, i2c_data, 2, i2c_ports);
     delay_milliseconds(1);
 
-    /*
+
     i2c_master_read_reg(DEV_ADDR, CHIP_CNTL_REG, i2c_data, 2, i2c_ports);
-    dbytes[1] |= (0x03 << 3); // Set bits 3,4 for snapshot mode
-    i2c_master_write_reg(DEV_ADDR, 0x07, dbytes, 2, i2c_ports);
+    i2c_data[0] &= 0b11111101;
+    i2c_master_write_reg(DEV_ADDR, CHIP_CNTL_REG, i2c_data, 2, i2c_ports);
     delay_milliseconds(1);
-    */
+
 
     i2c_data[0] = WIN_HEIGHT >> 8; // MS byte of height
     i2c_data[1] = WIN_HEIGHT & 0xff; // LS byte
@@ -98,29 +98,6 @@ void config_sensor(){
     i2c_master_write_reg(DEV_ADDR, HOR_BLANK_REG_B, i2c_data, 2, i2c_ports);
     delay_milliseconds(1);
 
-
-/*
-    dbytesW[0] = 0x03; // MS byte
-    dbytesW[1] = 0x08; // LS byte for col binning of 4
-    i2c_master_write_reg(DEV_ADDR, READ_MODE_REG, dbytesW, 2, i2c_ports);
-
-    delay_milliseconds(1);
-
-    i2c_master_read_reg(DEV_ADDR, READ_MODE_REG, dbytesR, 2, i2c_ports);
-    printhex(dbytesR[0]); // MS byte
-    printhexln(dbytesR[1]); // LS byte
-*/
-
-
-    i2c_data[0] = 0x28; // MS byte; 0x30 for horizontal shade; 0x28 for vertical shade; 0x38 for diagonal shade;
-    i2c_data[1] = 0; // LS byte
-//    i2c_data[0] = 0x27; // MS byte; For fixed pattern white
-//    i2c_data[1] = 0xFF; // LS byte
-//    i2c_data[0] = 0x24; // MS byte; For fixed pattern black
-//    i2c_data[1] = 0; // LS byte
-    i2c_master_write_reg(DEV_ADDR, TEST_PAT_REG, i2c_data, 2, i2c_ports);
-
-    printstrln("Camera configured .....");
 }
 
 inline void config_port(){
@@ -149,64 +126,39 @@ void read_data(streaming chanend c){
 	config_sensor();
 	config_port();
 
-	// Wait for ready signal
-	c :> unsigned;
+	while(1){
 
-	// Input data of a frame
-	frame_valid when pinseq(0) :> void;
-	frame_valid when pinseq(1) :> void; // wait for a valid frame
+        // Wait for ready signal
+        c :> unsigned;
+
+        // Input data of a frame
+        frame_valid when pinseq(0) :> void;
+        frame_valid when pinseq(1) :> void; // wait for a valid frame
 
 
-    setc(data_port);
-    /*
-	for (unsigned i=0; i<LCD_HEIGHT*LCD_ROW_WORDS; i++){
-//    for (unsigned i=0; i<LCD_ROW_WORDS; i++){
-	    unsigned data;
-	    data = do_input(data_port);
-	    c <: data;
-//printhexln(data);
-//	    c <: 0xf800f800;
+        setc(data_port);
+        for (unsigned i=0; i<LCD_HEIGHT*LCD_ROW_WORDS; i++){
+            unsigned data;
+            data = do_input(data_port);
+            c <: data;
+        }
+
 	}
-	*/
-
-	do{
-	    unsigned data;
-	    data = do_input(data_port);
-	    c <: data;
-	} while (peek(frame_valid));
-
-	printstrln ("Frame captured ...");
 }
 
 
 #pragma unsafe arrays
-//inline unsafe unsigned get_row(streaming chanend c, unsigned * unsafe dataPtr){
 inline unsafe void get_row(streaming chanend c, unsigned * unsafe dataPtr){
-//timer t; unsigned t1,t2;
-//t:>t1;
     for (unsigned i=0; i<LCD_ROW_WORDS; i++){
         c :> *(dataPtr++);
     }
-
-//for (unsigned i=0; i<LCD_ROW_WORDS; i++){
-//    printhexln( *(--dataPtr));
-//}
-
-//t:>t2;
-//return(t2-t1);
 }
 
 
 #pragma unsafe arrays
-//inline unsafe unsigned store_row (chanend c_dc, unsigned row, unsigned frBuf, intptr_t buf){
 inline unsafe void store_row (chanend c_dc, unsigned row, unsigned frBuf, intptr_t buf){
-//    timer t; unsigned t1,t2;
-//    t:>t1;
     display_controller_image_write_line_p(c_dc, row, frBuf, buf);
     display_controller_wait_until_idle_p(c_dc, buf);
-//    t:>t2;
-//    return(t2-t1);
-
 }
 
 inline unsigned short rgb888_to_rgb565(char b, char g, char r) {
@@ -236,8 +188,6 @@ void color_interpolation(chanend c_dc, unsigned frBuf){
 
         display_controller_image_read_line(c_dc, i, frBuf, buf[i%3]);
         display_controller_wait_until_idle(c_dc, buf[i%3]);
-//for (unsigned j=0; j<LCD_ROW_WORDS; j++) printhexln(buf[i%3][j]);
-//printhexln(buf[i%3][50]);
 
         if (row&1){
             for (unsigned j=2; j<2*LCD_ROW_WORDS-1; j+=2){    // odd row, even col, green pix
@@ -290,10 +240,8 @@ void color_interpolation(chanend c_dc, unsigned frBuf){
 
         // RGB565 conversion and write row
         for (unsigned j=1; j<2*LCD_ROW_WORDS-1; j++)
-//{
             (rgb565,unsigned short[])[j] = rgb888_to_rgb565(b[j], g[j], r[j]);
-//printhexln((rgb565,unsigned short[])[j]);
-//}
+
         (rgb565,unsigned short[])[0] = 0;
         (rgb565,unsigned short[])[2*LCD_ROW_WORDS-1] = 0;
 
@@ -309,48 +257,53 @@ void color_interpolation(chanend c_dc, unsigned frBuf){
 
 }
 
+
+
 enum handshake {READY};
 #pragma unsafe arrays
 void store_data(streaming chanend c, chanend c_dc){
     unsigned data1[LCD_ROW_WORDS], data2[LCD_ROW_WORDS];
     unsigned * unsafe tempPtr, * unsafe readBufPtr, * unsafe storeBufPtr;
-    unsigned frBuf;
-//unsigned a,b,r=0;
+    unsigned frBuf[2], frBufIndex=0;
 
     // Create frame buffer
-    frBuf = display_controller_register_image(c_dc, LCD_ROW_WORDS, LCD_HEIGHT);
+    frBuf[0] = display_controller_register_image(c_dc, LCD_ROW_WORDS, LCD_HEIGHT);
+    frBuf[1] = display_controller_register_image(c_dc, LCD_ROW_WORDS, LCD_HEIGHT);
+    display_controller_frame_buffer_init(c_dc, frBuf[0]);
 
-    //Send a ready signal for receiving data
-    c <: (unsigned)READY;
+    while (1){
 
-    // Get frame & store
-    unsafe {
-        readBufPtr = data1; storeBufPtr = data2;    // pointers to manage double buffer
-        get_row (c,readBufPtr);
+        frBufIndex = 1-frBufIndex;
+        //Send a ready signal for receiving data
+        c <: (unsigned)READY;
 
-        for (unsigned r=1; r<LCD_HEIGHT; r++){
-            //swap data buffers for reading and storing
-            tempPtr = readBufPtr;
-            readBufPtr = storeBufPtr;
-            storeBufPtr = tempPtr;
+        // Get frame & store
+        unsafe {
+            readBufPtr = data1; storeBufPtr = data2;    // pointers to manage double buffer
+            get_row (c,readBufPtr);
 
-            par {
-//                a = get_row (c,readBufPtr);
-//                b = store_row (c_dc, r-1, frBuf, (intptr_t)storeBufPtr);
-                get_row (c,readBufPtr);
-                store_row(c_dc,r-1,frBuf,(intptr_t)storeBufPtr);
+            for (unsigned r=1; r<LCD_HEIGHT; r++){
+                //swap data buffers for reading and storing
+                tempPtr = readBufPtr;
+                readBufPtr = storeBufPtr;
+                storeBufPtr = tempPtr;
+
+                par {
+                    get_row (c,readBufPtr);
+                    store_row(c_dc,r-1,frBuf[frBufIndex],(intptr_t)storeBufPtr);
+                }
             }
-//printintln(a); printintln(b);
+
+            store_row(c_dc,LCD_HEIGHT-1,frBuf[frBufIndex],(intptr_t)readBufPtr);
         }
 
-        store_row(c_dc,LCD_HEIGHT-1,frBuf,(intptr_t)readBufPtr);
+        // Color interpolation
+        color_interpolation(c_dc, frBuf[frBufIndex]);    // TODO: Try on-the-fly color interpolation
+
+        // Display
+        display_controller_frame_buffer_commit(c_dc, frBuf[frBufIndex]);
+        delay_milliseconds(10);   // To remove flicker
     }
-
-    // Color interpolation
-    color_interpolation(c_dc, frBuf);
-
-    // Display
-    display_controller_frame_buffer_init(c_dc, frBuf);
 
 }
 
