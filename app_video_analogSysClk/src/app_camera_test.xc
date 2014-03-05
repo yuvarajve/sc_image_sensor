@@ -1,4 +1,4 @@
-
+// Sysclk input removed.
 // Sensor operating in master mode, Display on LCD using display controller
 
 #include <platform.h>
@@ -20,7 +20,6 @@ on tile[1]: in port line_valid = XS1_PORT_1L;
 on tile[1]: in buffered port:32 data_port = XS1_PORT_16B;
 on tile[1]: r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
 on tile[1]: clock   clk1     = XS1_CLKBLK_1;
-on tile[1]: clock clk2 = XS1_CLKBLK_2;
 on tile[1]: out port sys_clk = XS1_PORT_1A;
 // LCD and SDRAM ports
 on tile[0] : lcd_ports lcdports = { //triangle slot
@@ -33,6 +32,7 @@ on tile[0] : sdram_ports sdramports = { //star slot
 #define DEV_ADDR 0x48   // Seven most sig bits of 0x90 for write, 0x91 for read
 #define RESET_REG 0x0C
 #define LOCK_REG 0xFE
+#define SENSOR_TYPE_CNTL_REG 0x0F
 #define CHIP_CNTL_REG 0x07
 #define READ_MODE_REG 0x0D
 #define TEST_PAT_REG 0x7F
@@ -45,12 +45,10 @@ on tile[0] : sdram_ports sdramports = { //star slot
 #define ROW_START_REG 0x02
 #define COL_START_REG 0x01
 
-
 #define WIN_HEIGHT LCD_HEIGHT
 #define WIN_WIDTH LCD_WIDTH
 #define ROW_START (480-LCD_HEIGHT)/2
 #define COL_START (752-LCD_WIDTH)/2
-
 
 
 #if (WIN_WIDTH<700)     // Total row time should be 690 cols for correct operation of ADC
@@ -59,24 +57,29 @@ on tile[0] : sdram_ports sdramports = { //star slot
 
 //#define HOR_BLANK 700
 
-inline void generate_sysclk(){
-    configure_clock_rate_at_most(clk1,100,4);
-    configure_out_port(sys_clk, clk1, 0);
-    configure_port_clock_output(sys_clk, clk1);
-    start_clock(clk1);
-
-}
 
 void config_sensor(){
     unsigned char i2c_data[2];
 
     i2c_master_init(i2c_ports);
 /*
+    i2c_data[0] = 0xBE; // MS byte
+    i2c_data[1] = 0xEF; // LS byte
+    i2c_master_write_reg(DEV_ADDR, LOCK_REG, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
+*/
+/*
     i2c_master_read_reg(DEV_ADDR, RESET_REG, i2c_data, 2, i2c_ports);
     i2c_data[1] |= 0x03;
     i2c_master_write_reg(DEV_ADDR, RESET_REG, i2c_data, 2, i2c_ports);
     delay_milliseconds(1);
+
+    i2c_master_read_reg(DEV_ADDR, SENSOR_TYPE_CNTL_REG, i2c_data, 2, i2c_ports);
+    i2c_data[1] |= 0x02;    // Set bit 1
+    i2c_master_write_reg(DEV_ADDR, SENSOR_TYPE_CNTL_REG, i2c_data, 2, i2c_ports);
+    delay_milliseconds(1);
 */
+
     i2c_data[0] = WIN_HEIGHT >> 8; // MS byte of height
     i2c_data[1] = WIN_HEIGHT & 0xff; // LS byte
     i2c_master_write_reg(DEV_ADDR, WIN_HEIGHT_REG_A, i2c_data, 2, i2c_ports);
@@ -109,7 +112,7 @@ void config_sensor(){
     delay_milliseconds(1);
 
     i2c_master_read_reg(DEV_ADDR, CHIP_CNTL_REG, i2c_data, 2, i2c_ports);
-    i2c_data[0] &= 0b11111101;  // clear bit 9 for normal operation
+    i2c_data[0] &= 0b11111101;
     i2c_master_write_reg(DEV_ADDR, CHIP_CNTL_REG, i2c_data, 2, i2c_ports);
     delay_milliseconds(1);
 /*
@@ -124,9 +127,9 @@ void config_sensor(){
 inline void config_port(){
 
     // Port clock setup
-    configure_clock_src(clk2, pix_clk);
-    configure_in_port_strobed_slave(data_port, line_valid, clk2);
-    start_clock(clk2);
+    configure_clock_src(clk1, pix_clk);
+    configure_in_port_strobed_slave(data_port, line_valid, clk1);
+    start_clock(clk1);
 
 }
 
@@ -143,7 +146,6 @@ static inline unsigned do_input(in buffered port:32 data_port) {
 void read_data(streaming chanend c){
 
 	// Configure sensor registers, clock and port
-    generate_sysclk();
 	config_sensor();
 	config_port();
 
@@ -187,7 +189,6 @@ inline unsigned short rgb888_to_rgb565(char b, char g, char r) {
 }
 
 
-
 void color_interpolation(chanend c_dc, unsigned frBuf){
     unsigned buf[3][LCD_ROW_WORDS], rgb565[LCD_ROW_WORDS];
     char r[2*LCD_ROW_WORDS], g[2*LCD_ROW_WORDS], b[2*LCD_ROW_WORDS];
@@ -214,51 +215,51 @@ void color_interpolation(chanend c_dc, unsigned frBuf){
         display_controller_image_read_line(c_dc, i, frBuf, buf[i%3]);
         display_controller_wait_until_idle(c_dc, buf[i%3]);
 
-        if (row&1){
+        if (row&1){ // odd row
             for (unsigned j=1; j<2*LCD_ROW_WORDS-1; j+=2){    // odd row, odd col, green pix
-                g[j] = ((buf[row%3],short[])[j])>>2 & 0xff;
-                unsigned b_top = ((buf[(row-1)%3],short[])[j]) & 0x3ff;
-                unsigned b_bot = ((buf[(row+1)%3],short[])[j]) & 0x3ff;
+                g[j] = ((buf[row%3],unsigned short[])[j])>>2 & 0xff;
+                unsigned b_top = ((buf[(row-1)%3],unsigned short[])[j]) & 0x3ff;
+                unsigned b_bot = ((buf[(row+1)%3],unsigned short[])[j]) & 0x3ff;
                 b[j] = (b_top+b_bot)>>3; // div 2 for averaging, div 4 for 10 to 8-bit conversion
-                unsigned r_left = ((buf[row%3],short[])[j-1]) & 0x3ff;
-                unsigned r_right = ((buf[row%3],short[])[j+1]) & 0x3ff;
+                unsigned r_left = ((buf[row%3],unsigned short[])[j-1]) & 0x3ff;
+                unsigned r_right = ((buf[row%3],unsigned short[])[j+1]) & 0x3ff;
                 r[j] = (r_left+r_right)>>3;
             }
             for (unsigned j=2; j<2*LCD_ROW_WORDS-1; j+=2){    // odd row, even col, red pix
-                r[j] = ((buf[row%3],short[])[j])>>2 & 0xff;
-                unsigned b_diag1 = ((buf[(row-1)%3],short[])[j-1]) & 0x3ff;
-                unsigned b_diag2 = ((buf[(row-1)%3],short[])[j+1]) & 0x3ff;
-                unsigned b_diag3 = ((buf[(row+1)%3],short[])[j-1]) & 0x3ff;
-                unsigned b_diag4 = ((buf[(row+1)%3],short[])[j+1]) & 0x3ff;
+                r[j] = ((buf[row%3],unsigned short[])[j])>>2 & 0xff;
+                unsigned b_diag1 = ((buf[(row-1)%3],unsigned short[])[j-1]) & 0x3ff;
+                unsigned b_diag2 = ((buf[(row-1)%3],unsigned short[])[j+1]) & 0x3ff;
+                unsigned b_diag3 = ((buf[(row+1)%3],unsigned short[])[j-1]) & 0x3ff;
+                unsigned b_diag4 = ((buf[(row+1)%3],unsigned short[])[j+1]) & 0x3ff;
                 b[j] = (b_diag1+b_diag2+b_diag3+b_diag4)>>4; // div 4 for averaging, div 4 for 10 to 8-bit conversion
-                unsigned g_adj1 = ((buf[(row-1)%3],short[])[j]) & 0x3ff;
-                unsigned g_adj2 = ((buf[(row+1)%3],short[])[j]) & 0x3ff;
-                unsigned g_adj3 = ((buf[row%3],short[])[j-1]) & 0x3ff;
-                unsigned g_adj4 = ((buf[row%3],short[])[j+1]) & 0x3ff;
+                unsigned g_adj1 = ((buf[(row-1)%3],unsigned short[])[j]) & 0x3ff;
+                unsigned g_adj2 = ((buf[(row+1)%3],unsigned short[])[j]) & 0x3ff;
+                unsigned g_adj3 = ((buf[row%3],unsigned short[])[j-1]) & 0x3ff;
+                unsigned g_adj4 = ((buf[row%3],unsigned short[])[j+1]) & 0x3ff;
                 g[j] = (g_adj1+g_adj2+g_adj3+g_adj4)>>4;
             }
         }
-        else {
+        else {  //even row
             for (unsigned j=1; j<2*LCD_ROW_WORDS-1; j+=2){    // even row, odd col, blue pix
-                b[j] = ((buf[row%3],short[])[j])>>2 & 0xff;
-                unsigned r_diag1 = ((buf[(row-1)%3],short[])[j-1]) & 0x3ff;
-                unsigned r_diag2 = ((buf[(row-1)%3],short[])[j+1]) & 0x3ff;
-                unsigned r_diag3 = ((buf[(row+1)%3],short[])[j-1]) & 0x3ff;
-                unsigned r_diag4 = ((buf[(row+1)%3],short[])[j+1]) & 0x3ff;
+                b[j] = ((buf[row%3],unsigned short[])[j])>>2 & 0xff;
+                unsigned r_diag1 = ((buf[(row-1)%3],unsigned short[])[j-1]) & 0x3ff;
+                unsigned r_diag2 = ((buf[(row-1)%3],unsigned short[])[j+1]) & 0x3ff;
+                unsigned r_diag3 = ((buf[(row+1)%3],unsigned short[])[j-1]) & 0x3ff;
+                unsigned r_diag4 = ((buf[(row+1)%3],unsigned short[])[j+1]) & 0x3ff;
                 r[j] = (r_diag1+r_diag2+r_diag3+r_diag4)>>4;
-                unsigned g_adj1 = ((buf[(row-1)%3],short[])[j]) & 0x3ff;
-                unsigned g_adj2 = ((buf[(row+1)%3],short[])[j]) & 0x3ff;
-                unsigned g_adj3 = ((buf[row%3],short[])[j-1]) & 0x3ff;
-                unsigned g_adj4 = ((buf[row%3],short[])[j+1]) & 0x3ff;
+                unsigned g_adj1 = ((buf[(row-1)%3],unsigned short[])[j]) & 0x3ff;
+                unsigned g_adj2 = ((buf[(row+1)%3],unsigned short[])[j]) & 0x3ff;
+                unsigned g_adj3 = ((buf[row%3],unsigned short[])[j-1]) & 0x3ff;
+                unsigned g_adj4 = ((buf[row%3],unsigned short[])[j+1]) & 0x3ff;
                 g[j] = (g_adj1+g_adj2+g_adj3+g_adj4)>>4;
             }
             for (unsigned j=2; j<2*LCD_ROW_WORDS-1; j+=2){    // even row, even col, green pix
-                g[j] = ((buf[row%3],short[])[j])>>2 & 0xff;
-                unsigned b_left = ((buf[row%3],short[])[j-1]) & 0x3ff;
-                unsigned b_right = ((buf[row%3],short[])[j+1]) & 0x3ff;
+                g[j] = ((buf[row%3],unsigned short[])[j])>>2 & 0xff;
+                unsigned b_left = ((buf[row%3],unsigned short[])[j-1]) & 0x3ff;
+                unsigned b_right = ((buf[row%3],unsigned short[])[j+1]) & 0x3ff;
                 b[j] = (b_left+b_right)>>3;
-                unsigned r_top = ((buf[(row-1)%3],short[])[j]) & 0x3ff;
-                unsigned r_bot = ((buf[(row+1)%3],short[])[j]) & 0x3ff;
+                unsigned r_top = ((buf[(row-1)%3],unsigned short[])[j]) & 0x3ff;
+                unsigned r_bot = ((buf[(row+1)%3],unsigned short[])[j]) & 0x3ff;
                 r[j] = (r_top+r_bot)>>3;
             }
         }
@@ -275,6 +276,7 @@ void color_interpolation(chanend c_dc, unsigned frBuf){
     }
 
 }
+
 
 
 enum handshake {READY};
@@ -337,7 +339,7 @@ int main(){
         on tile[0]: lcd_server(c_lcd,lcdports);
         on tile[0]: sdram_server(c_sdram,sdramports);
 
-        on tile[0]: par(int i=0;i<2;i++)
+        on tile[0]: par(int i=0;i<2;i++)    // Not working when all 3 free cores run
                         while (1) {
                           set_core_fast_mode_on();
                         }
@@ -345,6 +347,7 @@ int main(){
                         while (1) {
                           set_core_fast_mode_on();
                         }
+
 	}
 
 	return 0;
