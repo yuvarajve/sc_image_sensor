@@ -17,7 +17,8 @@ on tile[0] : lcd_ports lcdports = { //triangle slot
 on tile[0] : sdram_ports sdramports = { //star slot
   XS1_PORT_16A, XS1_PORT_1B, XS1_PORT_1G, XS1_PORT_1C, XS1_PORT_1F, XS1_CLKBLK_2 };
 
-void app(image_sensor_interface client c, streaming chanend c_img, chanend c_dc){
+void app(streaming chanend c_img, chanend c_dc){
+
     unsigned frBuf[2], frBufIndex=0;
 
     // Create frame buffer
@@ -25,13 +26,11 @@ void app(image_sensor_interface client c, streaming chanend c_img, chanend c_dc)
     frBuf[1] = display_controller_register_image(c_dc, LCD_ROW_WORDS, LCD_HEIGHT);
     display_controller_frame_buffer_init(c_dc, frBuf[0]);
 
-    image_sensor_setup_master_mode(c, LCD_HEIGHT, LCD_WIDTH);
-    image_sensor_master_mode_start_rx(c, LCD_HEIGHT, LCD_WIDTH);
 
     while (1){
 
         frBufIndex = 1-frBufIndex;
-        image_sensor_master_mode_rx_frame(c_img, LCD_HEIGHT, LCD_WIDTH, c_dc, frBuf[frBufIndex]);
+        image_sensor_get_frame(c_img, c_dc, frBuf[frBufIndex]);
 
         // Display
         display_controller_frame_buffer_commit(c_dc, frBuf[frBufIndex]);
@@ -42,13 +41,12 @@ void app(image_sensor_interface client c, streaming chanend c_img, chanend c_dc)
 
 
 int main(){
-    image_sensor_interface c;
     chan c_dc, c_lcd, c_sdram;
     streaming chan c_img_sen;
 
     par{
-        on tile[1]: image_sensor_server(c, imgports, c_img_sen);
-        on tile[0]: app(c,c_img_sen,c_dc);
+        on tile[1]: image_sensor_server(imgports, c_img_sen);
+        on tile[0]: app(c_img_sen,c_dc);
         on tile[0]: display_controller(c_dc,c_lcd,c_sdram);
         on tile[0]: lcd_server(c_lcd,lcdports);
         on tile[0]: sdram_server(c_sdram,sdramports);
