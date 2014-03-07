@@ -10,7 +10,7 @@
 // Port declaration
 on tile[1] : image_sensor_ports imgports = { //circle slot
    XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_16B,
-   XS1_PORT_1E, {XS1_PORT_1H, XS1_PORT_1I, 1000}, XS1_CLKBLK_1
+   {XS1_PORT_1H, XS1_PORT_1I, 1000}, XS1_CLKBLK_1
 };
 on tile[0] : lcd_ports lcdports = { //triangle slot
   XS1_PORT_1I, XS1_PORT_1L, XS1_PORT_16B, XS1_PORT_1J, XS1_PORT_1K, XS1_CLKBLK_1 };
@@ -26,13 +26,16 @@ void app(streaming chanend c_img, chanend c_dc){
     frBuf[1] = display_controller_register_image(c_dc, LCD_ROW_WORDS, LCD_HEIGHT);
     display_controller_frame_buffer_init(c_dc, frBuf[0]);
 
+    // Init capture window size
+    image_sensor_init(c_img, LCD_HEIGHT, LCD_WIDTH);
 
+
+    // Get frames and display them
     while (1){
 
         frBufIndex = 1-frBufIndex;
-        image_sensor_get_frame(c_img, c_dc, frBuf[frBufIndex]);
+        image_sensor_get_frame(c_img, c_dc, frBuf[frBufIndex], LCD_HEIGHT, LCD_WIDTH);
 
-        // Display
         display_controller_frame_buffer_commit(c_dc, frBuf[frBufIndex]);
         delay_milliseconds(10);   // To remove flicker
 

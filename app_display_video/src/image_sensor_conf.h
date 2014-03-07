@@ -1,9 +1,0 @@
-
-
-#ifndef IMAGE_SENSOR_CONF_H_
-#define IMAGE_SENSOR_CONF_H_
-
-#define WIN_HEIGHT 272
-#define WIN_WIDTH 480
-
-#endif /* IMAGE_SENSOR_CONF_H_ */
