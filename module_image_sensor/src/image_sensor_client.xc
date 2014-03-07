@@ -5,7 +5,7 @@
 #include "display_controller.h"
 
 
-void image_sensor_init(streaming chanend c_imgSensor, unsigned height, unsigned width){
+void image_sensor_set_capture_window(streaming chanend c_imgSensor, unsigned height, unsigned width){
     c_imgSensor <: (unsigned)CONFIG;
     c_imgSensor <: height;
     c_imgSensor <: width;

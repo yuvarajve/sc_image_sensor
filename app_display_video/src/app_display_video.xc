@@ -26,8 +26,8 @@ void app(streaming chanend c_img, chanend c_dc){
     frBuf[1] = display_controller_register_image(c_dc, LCD_ROW_WORDS, LCD_HEIGHT);
     display_controller_frame_buffer_init(c_dc, frBuf[0]);
 
-    // Init capture window size
-    image_sensor_init(c_img, LCD_HEIGHT, LCD_WIDTH);
+    // Set capture window size
+    image_sensor_set_capture_window(c_img, LCD_HEIGHT, LCD_WIDTH);
 
 
     // Get frames and display them
