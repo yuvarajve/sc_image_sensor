@@ -110,7 +110,7 @@ void color_interpolation(chanend c_dc, unsigned frBuf, unsigned height, unsigned
 
         // RGB565 conversion and write row
         for (unsigned j=1; j<width-1; j++)
-            (rgb565,unsigned short[])[j] = rgb888_to_rgb565(b[j], g[j], r[j]);
+            (rgb565,unsigned short[])[j] = rgb888_to_rgb565(b[j], g[j]*GREEN_REDUCTION_FACTOR_NUM/GREEN_REDUCTION_FACTOR_DEN, r[j]);     // 8/10 is for white balancing since the output looks greenish
 
         (rgb565,unsigned short[])[0] = 0;
         (rgb565,unsigned short[])[width-1] = 0;

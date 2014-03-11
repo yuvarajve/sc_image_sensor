@@ -20,6 +20,28 @@ static void init_registers(struct image_sensor_ports &imgports){
     i2c_master_write_reg(DEV_ADDR, RESET_REG, i2c_data, 2, imgports.i2c_ports);
     delay_milliseconds(1);
 
+    i2c_data[0] = 0;
+    i2c_data[1] &= 0b11111101;      //First unset the enabled AGC bit
+    i2c_data[1] |= (AGC_ENABLE<<1);   //Disabled AGC for manually setting the analog gain
+    i2c_master_write_reg(DEV_ADDR, AEC_AGC_ENABLE_REG, i2c_data, 2, imgports.i2c_ports);
+    delay_milliseconds(1);
+
+    i2c_master_read_reg(DEV_ADDR, ANALOG_GAIN_REG, i2c_data, 2, imgports.i2c_ports);
+    delay_milliseconds(1);
+    i2c_data[1] &= 0b10000000;
+    i2c_data[1] |= ANALOG_GAIN;
+    i2c_master_write_reg(DEV_ADDR, ANALOG_GAIN_REG, i2c_data, 2, imgports.i2c_ports);
+    delay_milliseconds(1);
+
+    for (unsigned reg = DIG_GAIN_REG_START; reg <= DIG_GAIN_REG_END; reg++){
+        i2c_master_read_reg(DEV_ADDR, reg, i2c_data, 2, imgports.i2c_ports);
+        delay_milliseconds(1);
+        i2c_data[1] &= 0b11110000;
+        i2c_data[1] |= DIG_GAIN;
+        i2c_master_write_reg(DEV_ADDR, reg, i2c_data, 2, imgports.i2c_ports);
+        delay_milliseconds(1);
+    }
+
     i2c_master_read_reg(DEV_ADDR, CHIP_CNTL_REG, i2c_data, 2, imgports.i2c_ports);
     delay_milliseconds(1);
     i2c_data[0] &= 0b11111101;  // Clearing bit 9 for normal operation
@@ -47,6 +69,7 @@ static void config_registers(struct image_sensor_ports &imgports, unsigned heigh
     // Total row time should be 690 cols for correct operation of ADC. If not, add horizontal blanking pulses.
     if (width<700) {
         horBlank = 700-width;
+        if (horBlank<94) horBlank = 94; //Default is 94
 
         i2c_data[0] = horBlank >> 8; // MS byte of width
         i2c_data[1] = horBlank & 0xff; // LS byte
@@ -103,11 +126,12 @@ void image_sensor_server(struct image_sensor_ports &imgports, streaming chanend 
         } else {
 
                 unsigned n_data = height*width/2;
+                unsigned i=0;
+                setc(imgports.data_port);
                 imgports.frame_valid when pinseq(0) :> void;
                 imgports.frame_valid when pinseq(1) :> void; // wait for a valid frame
 
-                setc(imgports.data_port);
-                for (unsigned i=0; i<n_data; i++){
+                for (; i<n_data; i++){
                     unsigned data = do_input(imgports.data_port);
                     c_imgSensor <: data;
                 }
