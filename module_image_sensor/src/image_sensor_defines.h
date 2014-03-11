@@ -20,7 +20,7 @@ enum commands {CONFIG, GET_FRAME};
 
 #define DIG_GAIN_REG_START 0x80
 #define DIG_GAIN_REG_END 0x98
-#define DIG_GAIN 8  //Range is 1-15. Default is 4. Increase it in a darker environment.
+#define DIG_GAIN 6  //Range is 1-15. Default is 4. Increase it in a darker environment.
 
 #define AEC_AGC_ENABLE_REG 0xAF
 #define AGC_ENABLE 1    // Disable AGC to manually set the analog gain
