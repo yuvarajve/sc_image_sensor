@@ -5,6 +5,7 @@
 #include "image_sensor_defines.h"
 #include "i2c.h"
 
+
 static inline void config_data_port(struct image_sensor_ports &imgports){
 
     configure_clock_src(imgports.clk1, imgports.pix_clk);   // Port clock setup
@@ -87,7 +88,7 @@ static inline unsigned do_input(in buffered port:32 data_port) {
   return data;
 }
 
-#pragma unsafe arrays
+
 void image_sensor_server(struct image_sensor_ports &imgports, streaming chanend c_imgSensor){
     unsigned cmd;
     unsigned height, width;
@@ -115,8 +116,8 @@ void image_sensor_server(struct image_sensor_ports &imgports, streaming chanend 
 
                 imgports.frame_valid when pinseq(0) :> void;
                 imgports.frame_valid when pinseq(1) :> void; // wait for a valid frame
-                imgports.data_port :> unsigned;
 
+                clearbuf(imgports.data_port);
                 for (; i<n_data; i++){
                     unsigned data = do_input(imgports.data_port);
                     c_imgSensor <: data;
