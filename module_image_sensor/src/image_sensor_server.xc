@@ -22,6 +22,11 @@ static void init_registers(struct image_sensor_ports &imgports){
     i2c_master_write_reg(DEV_ADDR, RESET_REG, i2c_data, 2, imgports.i2c_ports);
     delay_milliseconds(1);
 
+    i2c_data[0] = 0;
+    i2c_data[1] = AEC | (AGC<<1);
+    i2c_master_write_reg(DEV_ADDR, AEC_AGC_ENABLE_REG, i2c_data, 2, imgports.i2c_ports);
+    delay_milliseconds(1);
+
     for (unsigned reg = DIG_GAIN_REG_START; reg <= DIG_GAIN_REG_END; reg++){
         i2c_master_read_reg(DEV_ADDR, reg, i2c_data, 2, imgports.i2c_ports);
         delay_milliseconds(1);

@@ -18,9 +18,13 @@ enum commands {CONFIG, GET_FRAME};
 #define GREEN_REDUCTION_FACTOR_NUM 8     // Numerator of the factor for white balancing
 #define GREEN_REDUCTION_FACTOR_DEN 10     // Denominator of the factor for white balancing
 
+#define AEC_AGC_ENABLE_REG 0xAF
+#define AEC 0
+#define AGC 0   // Disable AGC in sunlight. Enable AGC in artificial light and adjust DIG_GAIN.
+
 #define DIG_GAIN_REG_START 0x80
 #define DIG_GAIN_REG_END 0x98
-#define DIG_GAIN 6  //Range is 1-15. Default is 4. Increase it in a darker environment.
+#define DIG_GAIN 10  //Range is 1-15. Default is 4. Increase it in a darker environment.
 
 
 // Sensor resolution
