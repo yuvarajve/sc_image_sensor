@@ -7,12 +7,6 @@
 #define MT9V034_H_
 
 /**************************************************************************//**
- * @defgroup MT9V034_IMAGE_SENSOR
- * @{
- * @brief MT9V034_IMAGE_SENSOR Register Declaration
- *****************************************************************************/
-
-/**************************************************************************//**
  * @defgroup MT9V034_IMAGE_SENSOR_BitFields
  * @{
  *****************************************************************************/
@@ -389,8 +383,8 @@
 #define _LOCK_ALL_REG                             (0xDEAD)
 #define LOCK_ALL_REG                              (_LOCK_ALL_REG << 0)
 #define _UNLOCK_ALL_REG                           (0xBEEF)
-#define _UNLOCK_ALL_REG                           (_UNLOCK_ALL_REG << 0)
+#define UNLOCK_ALL_REG                            (_UNLOCK_ALL_REG << 0)
 
-/** @} End of group MT9V034_IMAGE_SENSOR */
+/** @} End of group MT9V034_IMAGE_SENSOR_BitFields */
 
 #endif /* MT9V034_H_ */
