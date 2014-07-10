@@ -3,8 +3,8 @@
 
 <cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
-		<cconfiguration id="com.xmos.cdt.toolchain.1358468368">
-			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.xmos.cdt.toolchain.1358468368" moduleId="org.eclipse.cdt.core.settings" name="Default">
+		<cconfiguration id="com.xmos.cdt.toolchain.233853563">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.xmos.cdt.toolchain.233853563" moduleId="org.eclipse.cdt.core.settings" name="Default">
 				<externalSettings/>
 				<extensions>
 					<extension id="com.xmos.cdt.core.XEBinaryParser" point="org.eclipse.cdt.core.BinaryParser"/>
@@ -96,25 +96,18 @@
 				</profile>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration buildProperties="" description="" id="com.xmos.cdt.toolchain.1358468368" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
-					<folderInfo id="com.xmos.cdt.toolchain.1358468368.827647775" name="/" resourcePath="">
-						<toolChain id="com.xmos.cdt.toolchain.614476372" name="com.xmos.cdt.toolchain" superClass="com.xmos.cdt.toolchain">
-							<targetPlatform archList="all" binaryParser="com.xmos.cdt.core.XEBinaryParser" id="com.xmos.cdt.core.platform.1837259191" isAbstract="false" osList="linux,win32,macosx" superClass="com.xmos.cdt.core.platform"/>
-							<builder arguments="-f .makefile" id="com.xmos.cdt.builder.base.1526148772" keepEnvironmentInBuildfile="false" managedBuildOn="false" superClass="com.xmos.cdt.builder.base"/>
-							<tool id="com.xmos.cdt.xc.compiler.1694929447" name="com.xmos.cdt.xc.compiler" superClass="com.xmos.cdt.xc.compiler">
-								<option id="com.xmos.xc.compiler.option.include.paths.901421046" name="com.xmos.xc.compiler.option.include.paths" superClass="com.xmos.xc.compiler.option.include.paths" valueType="includePath">
+				<configuration buildProperties="" description="" id="com.xmos.cdt.toolchain.233853563" name="Default" parent="org.eclipse.cdt.build.core.emptycfg">
+					<folderInfo id="com.xmos.cdt.toolchain.233853563.485033348" name="/" resourcePath="">
+						<toolChain id="com.xmos.cdt.toolchain.1650413358" name="com.xmos.cdt.toolchain" superClass="com.xmos.cdt.toolchain">
+							<targetPlatform archList="all" binaryParser="com.xmos.cdt.core.XEBinaryParser" id="com.xmos.cdt.core.platform.959181120" isAbstract="false" osList="linux,win32,macosx" superClass="com.xmos.cdt.core.platform"/>
+							<builder arguments="-f .makefile" id="com.xmos.cdt.builder.base.228589537" keepEnvironmentInBuildfile="false" managedBuildOn="false" superClass="com.xmos.cdt.builder.base"/>
+							<tool id="com.xmos.cdt.xc.compiler.102194602" name="com.xmos.cdt.xc.compiler" superClass="com.xmos.cdt.xc.compiler">
+								<option id="com.xmos.xc.compiler.option.include.paths.310554218" name="com.xmos.xc.compiler.option.include.paths" superClass="com.xmos.xc.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/xc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/gcc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/doc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config}&quot;"/>
 								</option>
-								<option id="com.xmos.xc.compiler.option.defined.symbols.851502983" name="com.xmos.xc.compiler.option.defined.symbols" superClass="com.xmos.xc.compiler.option.defined.symbols" valueType="definedSymbols">
+								<option id="com.xmos.xc.compiler.option.defined.symbols.548713971" name="com.xmos.xc.compiler.option.defined.symbols" superClass="com.xmos.xc.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__SHRT_MAX__=32767"/>
 									<listOptionValue builtIn="false" value="__SCHAR_MAX__=127"/>
 									<listOptionValue builtIn="false" value="__FLT_RADIX__=2"/>
@@ -162,21 +155,14 @@
 									<listOptionValue builtIn="false" value="__LDBL_MAX__=1.7976931348623157e+308L"/>
 									<listOptionValue builtIn="false" value="__LONG_MAX__=2147483647L"/>
 								</option>
-								<inputType id="com.xmos.cdt.xc.compiler.input.2011143167" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
+								<inputType id="com.xmos.cdt.xc.compiler.input.480663632" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
 							</tool>
-							<tool id="com.xmos.cdt.c.compiler.1205049148" name="com.xmos.cdt.c.compiler" superClass="com.xmos.cdt.c.compiler">
-								<option id="com.xmos.c.compiler.option.include.paths.3304572" name="com.xmos.c.compiler.option.include.paths" superClass="com.xmos.c.compiler.option.include.paths" valueType="includePath">
+							<tool id="com.xmos.cdt.c.compiler.793286447" name="com.xmos.cdt.c.compiler" superClass="com.xmos.cdt.c.compiler">
+								<option id="com.xmos.c.compiler.option.include.paths.484148661" name="com.xmos.c.compiler.option.include.paths" superClass="com.xmos.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/gcc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/doc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config}&quot;"/>
 								</option>
-								<option id="com.xmos.c.compiler.option.defined.symbols.89982484" name="com.xmos.c.compiler.option.defined.symbols" superClass="com.xmos.c.compiler.option.defined.symbols" valueType="definedSymbols">
+								<option id="com.xmos.c.compiler.option.defined.symbols.1851092805" name="com.xmos.c.compiler.option.defined.symbols" superClass="com.xmos.c.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__STDC__=1"/>
 									<listOptionValue builtIn="false" value="__STDC_VERSION__=199901L"/>
 									<listOptionValue builtIn="false" value="__STDC_HOSTED__=1"/>
@@ -280,23 +266,16 @@
 									<listOptionValue builtIn="false" value="__XCC_HAVE_FLOAT__=1"/>
 									<listOptionValue builtIn="false" value="_XSCOPE_PROBES_INCLUDE_FILE=&quot;/tmp/ccqHjqfd.h&quot;"/>
 								</option>
-								<inputType id="com.xmos.cdt.c.compiler.input.c.153425294" name="C" superClass="com.xmos.cdt.c.compiler.input.c"/>
+								<inputType id="com.xmos.cdt.c.compiler.input.c.145275884" name="C" superClass="com.xmos.cdt.c.compiler.input.c"/>
 							</tool>
-							<tool id="com.xmos.cdt.cxx.compiler.1545126595" name="com.xmos.cdt.cxx.compiler" superClass="com.xmos.cdt.cxx.compiler">
-								<option id="com.xmos.cxx.compiler.option.include.paths.976872033" name="com.xmos.cxx.compiler.option.include.paths" superClass="com.xmos.cxx.compiler.option.include.paths" valueType="includePath">
+							<tool id="com.xmos.cdt.cxx.compiler.117117032" name="com.xmos.cdt.cxx.compiler" superClass="com.xmos.cdt.cxx.compiler">
+								<option id="com.xmos.cxx.compiler.option.include.paths.1474678420" name="com.xmos.cxx.compiler.option.include.paths" superClass="com.xmos.cxx.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/gcc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/c++/4.2.1&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/c++/4.2.1/xcore-xmos-elf&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_i2c_master/doc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config}&quot;"/>
 								</option>
-								<option id="com.xmos.cxx.compiler.option.defined.symbols.1875742552" name="com.xmos.cxx.compiler.option.defined.symbols" superClass="com.xmos.cxx.compiler.option.defined.symbols" valueType="definedSymbols">
+								<option id="com.xmos.cxx.compiler.option.defined.symbols.650036719" name="com.xmos.cxx.compiler.option.defined.symbols" superClass="com.xmos.cxx.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__STDC__=1"/>
 									<listOptionValue builtIn="false" value="__cplusplus=1"/>
 									<listOptionValue builtIn="false" value="__STDC_HOSTED__=1"/>
@@ -404,7 +383,7 @@
 									<listOptionValue builtIn="false" value="__XCC_HAVE_FLOAT__=1"/>
 									<listOptionValue builtIn="false" value="_XSCOPE_PROBES_INCLUDE_FILE=&quot;/tmp/cclwY6Xg.h&quot;"/>
 								</option>
-								<inputType id="com.xmos.cdt.cxx.compiler.input.cpp.1738081342" name="C++" superClass="com.xmos.cdt.cxx.compiler.input.cpp"/>
+								<inputType id="com.xmos.cdt.cxx.compiler.input.cpp.1719576511" name="C++" superClass="com.xmos.cdt.cxx.compiler.input.cpp"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
@@ -416,6 +395,6 @@
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-		<project id="module_image_sensor_slave.null.141901582" name="module_image_sensor_slave"/>
+		<project id="module_pipeline_interface.null.427703930" name="module_pipeline_interface"/>
 	</storageModule>
 </cproject>
