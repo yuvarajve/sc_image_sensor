@@ -6,15 +6,25 @@
 #ifndef PIPELINE_INTERFACE_H_
 #define PIPELINE_INTERFACE_H_
 
+#define NOF_LINES_FOR_BAYER_PROCESS    2
+
 typedef enum {
-    SET_RESOLUTION,
+    // Sensor Interface commands
+    SET_SCREEN_RESOLUTION,
+    SET_ROW_START,
+    SET_COLUMN_START,
+    SET_HORIZONTAL_BLANK,
+    SET_VERTICAL_BLANK,
+    SET_TEST_PATTERN,
+    // Bayer Interface commands
     BAYER_MODE,
-    START_OPERATION
+    START_OPERATION,
+    STOP_OPERATION
 }mgmt_intrf_commands_t;
 
 typedef enum {
-    APM_MGMT_SUCCESS,
-    APM_MGMT_FAILURE
+    APM_MGMT_FAILURE,
+    APM_MGMT_SUCCESS
 }mgmt_intrf_status_t;
 
 interface mgmt_interface {
@@ -24,8 +34,8 @@ interface mgmt_interface {
 };
 
 interface pipeline_interface {
-  void get_new_line(unsigned * movable &line_buf_ptr);
-  void release_line_buf(unsigned * movable &line_buf_ptr);
+  [[guarded]] void get_new_line(unsigned * movable &line_buf_ptr);
+  [[guarded]] void release_line_buf(unsigned * movable &line_buf_ptr);
 };
 
 #endif /* PIPELINE_INTERFACE_H_ */

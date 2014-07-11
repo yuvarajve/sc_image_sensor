@@ -9,7 +9,7 @@ TARGET = SLICEKIT-L16
 APP_NAME = app_display_pipeline_video
 
 # The USED_MODULES variable lists other module used by the application.
-USED_MODULES = module_i2c_master module_image_sensor_config module_image_sensor_slave module_pipeline_interface
+USED_MODULES = module_image_sensor_config module_image_sensor_slave module_pipeline_interface
 
 # The flags passed to xcc when building the application
 # You can also set the following to override flags for a particular language:

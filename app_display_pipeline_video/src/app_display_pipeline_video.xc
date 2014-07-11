@@ -6,17 +6,11 @@
 #include <xs1.h>
 #include <platform.h>
 #include <print.h>
+#include <timer.h>
 
 #include "pipeline_interface.h"
 #include "image_sensor_server.h"
 
-void display(unsigned buffer[]) {
-
-    for(unsigned i = 0; i<8; i++) {
-      printuint(buffer[i]);printchar(',');
-    }
-    printcharln(' ');
-}
 /****************************************************************************************
  *
  ***************************************************************************************/
@@ -62,7 +56,7 @@ void mgmt_intrf(interface mgmt_interface client mgr_sensor,
                   case '1':
                       //send resolution to sensor_if
                       printstrln("mgmt_if:Sending Resolution to sensor_if");
-                      mgr_sensor.apm_mgmt(SET_RESOLUTION);
+                      mgr_sensor.apm_mgmt(SET_SCREEN_RESOLUTION);
                       next_cmd_to_issue = '2';
                       break;
 
@@ -98,8 +92,10 @@ void bayer_if(interface mgmt_interface server bayerif,
         interface pipeline_interface client apm_ds) {
 
     char operation_started = 0;
-    char bayer_process = 0;
-    unsigned * movable bayer_line_buf[2];
+    // added this to guard, get new line starts only after responding to management interface
+    char operation_start_responded = 0;
+    char nof_lines_for_bayer_process = 0;
+    unsigned * movable bayer_line_buf[NOF_LINES_FOR_BAYER_PROCESS];
 
     while(1){
 
@@ -110,29 +106,35 @@ void bayer_if(interface mgmt_interface server bayerif,
                 else if(command == START_OPERATION) {
                     printstrln("bayer_if: Start operation received from mgmt_if");
                     operation_started = 1;
+                    operation_start_responded = 0;
                 }
+                else if(command == STOP_OPERATION) {
+                    operation_started = 0;
+                    operation_start_responded = 0;
+                }
+
 
                 bayerif.request_response();
                 break;
 
             case bayerif.get_response(void) -> mgmt_intrf_status_t bayer_if_status:
                 bayer_if_status = APM_MGMT_SUCCESS;
+                operation_started ? (operation_start_responded = 1) : (operation_start_responded = 0);
                 break;
 
-            (operation_started) => default : {
-                if(bayer_process < 2) {
-                  // get new line twice for interpolation
-                  apm_ds.get_new_line(bayer_line_buf[bayer_process]);
-                  bayer_process++;
+            (operation_start_responded) => default : {
+                if(nof_lines_for_bayer_process < NOF_LINES_FOR_BAYER_PROCESS) {
+                   // get new line twice for bayer interpolation
+                   // TODO: change the macro NOF_LINES_FOR_BAYER incase more/less lines required
+                   apm_ds.get_new_line(bayer_line_buf[nof_lines_for_bayer_process]);
+                   nof_lines_for_bayer_process++;
                 }
                 else {
-                    // do interpolation here...
-                    display(bayer_line_buf[0]);
-                    display(bayer_line_buf[1]);
-                    // release line buffer here...
-                    apm_ds.release_line_buf(bayer_line_buf[0]);
-                    apm_ds.release_line_buf(bayer_line_buf[1]);
-                    bayer_process = 0;
+                  //TODO: do interpolation process before releasing the buffers.
+                  for(int loop = 0; loop < nof_lines_for_bayer_process; loop++)
+                      apm_ds.release_line_buf(bayer_line_buf[loop]);
+
+                  nof_lines_for_bayer_process = 0; // reset and start getting the next lines
                 }
             }
             break;
@@ -149,7 +151,6 @@ int main(void) {
         on tile[1]: mgmt_intrf(sensor_mgmt_intrf,bayer_mgmt_intrf);
         on tile[1]: image_sensor_server(sensor_mgmt_intrf,sensor_bayer_intrf);
         on tile[1]: bayer_if(bayer_mgmt_intrf,sensor_bayer_intrf);
-
     }
     return 0;
 }

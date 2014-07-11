@@ -387,4 +387,14 @@
 
 /** @} End of group MT9V034_IMAGE_SENSOR_BitFields */
 
+/**************************************************************************//**
+ * @defgroup MT9V034_IMAGE_SENSOR_Defines
+ * @{
+ *****************************************************************************/
+#define MT9V034_MAX_HEIGHT   480
+#define MT9V034_MAX_WIDTH    752
+#define MT9V034_REG_LOCK     0
+#define MT9V034_REG_UNLOCK   1
+
+/** @} End of group MT9V034_IMAGE_SENSOR_Defines */
 #endif /* MT9V034_H_ */

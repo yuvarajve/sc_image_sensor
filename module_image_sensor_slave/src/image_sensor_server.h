@@ -9,7 +9,6 @@
 #define IMAGE_SENSOR_SERVER_H_
 
 #include "pipeline_interface.h"
-#include "image_sensor_config.h"
 
 /***************************************************************************//**
  * @brief

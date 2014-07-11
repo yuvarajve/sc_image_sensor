@@ -19,6 +19,14 @@
 #define CONFIG_IN_SLAVE                 0
 #define CONFIG_IN_SNAPSHOT              2
 
+#if 0  //TODO: enable this for VGA Resolution
+#define CONFIG_WINDOW_HEIGHT       480
+#define CONFIG_WINDOW_WIDTH        640
+#else // LCD Resolution
+#define CONFIG_WINDOW_HEIGHT       272
+#define CONFIG_WINDOW_WIDTH        480
+#endif
+
 int image_sensor_init(REFERENCE_PARAM(struct r_i2c,i2c_master),unsigned opt_mode);
 
 #endif /* IMAGE_SENSOR_CONFIG_H_ */

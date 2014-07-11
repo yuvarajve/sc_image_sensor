@@ -6,7 +6,10 @@
 #include <xs1.h>
 #include <platform.h>
 #include <print.h>
+#include <timer.h>
+
 #include "pipeline_interface.h"
+#include "image_sensor_config.h"
 #include "image_sensor_server.h"
 
 typedef struct image_sensor_ports{
@@ -34,7 +37,9 @@ on tile[1] : image_sensor_ports imgports = { //circle slot
 on tile[1] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
   XS1_PORT_1E, XS1_PORT_1D, XS1_PORT_1P, XS1_PORT_1O
 };
-
+/****************************************************************************************
+ *
+ ***************************************************************************************/
 static inline void config_image_sensor_ports(void) {
 
     configure_out_port(imgports_slave.stln_out, imgports.clk1,0);
@@ -43,16 +48,9 @@ static inline void config_image_sensor_ports(void) {
     configure_in_port(imgports.line_valid,imgports.clk1);
     start_clock(imgports.clk1);
 }
-static inline void fill(unsigned buffer[]) {
-
-   static char flag = 0;
-
-    for(unsigned i = 0; i<8; i++)
-      buffer[i] = flag + i;
-
-    flag++;
-    flag %= 3;
-}
+/****************************************************************************************
+ *
+ ***************************************************************************************/
 static inline unsigned do_input(in buffered port:32 data_port) {
   unsigned data;
   asm volatile("in %0, res[%1]":"=r"(data):"r"(data_port));
@@ -87,7 +85,7 @@ static inline unsigned do_input(in buffered port:32 data_port) {
  * Consider EXPOSURE Time (half of Integration Time) = (16243.2/2) = 8121.6uSec = 812160 ticks
  * Assuimng STFRM_OUT Time as 25% Integration Time = (16243.2x0.25) = 4060.8uSec = 406080 ticks
  *******************************************************************************************/
-void trigger_exposure_stfrm_out(img_snsr_slave_mode_ports &imgports_slave)
+static inline void trigger_exposure_stfrm_out(void)
 {
     timer slv_tmr;
     unsigned tick = 0;
@@ -119,6 +117,35 @@ void trigger_exposure_stfrm_out(img_snsr_slave_mode_ports &imgports_slave)
       slv_tmr when timerafter(tick+880) :> tick;           //352 //880
     }
 }
+/****************************************************************************************
+ *
+ ***************************************************************************************/
+static inline void get_line(unsigned buffer[],unsigned lines_per_frame,unsigned words_per_line) {
+
+   static unsigned no_of_lines = 0;
+
+   // trigger exposure and stfrm_out for the very first of line of each frame.
+   if(!no_of_lines){
+       imgports_slave.stln_out <: 0;
+       trigger_exposure_stfrm_out();
+   }
+
+   // trigger stln_out high
+   imgports_slave.stln_out <: 1;
+   delay_microseconds(16);
+
+   for(unsigned loop = 0; loop < words_per_line/4; loop++){
+       buffer[loop] = do_input(imgports.data_port);
+   }
+
+   // trigger stln_out low
+   imgports_slave.stln_out <: 0;
+   delay_microseconds(1);
+
+   no_of_lines++;
+   no_of_lines %= lines_per_frame;
+
+}
 /***************************************************************************//**
  * @brief
  *   Image Sensor Slave Mode Server.
@@ -131,31 +158,35 @@ void trigger_exposure_stfrm_out(img_snsr_slave_mode_ports &imgports_slave)
  ******************************************************************************/
 void image_sensor_server(interface mgmt_interface server sensorif, interface pipeline_interface server apm_us) {
 
+    char operation_started = 0;
     char sensor_data_send_ptr_idx = 0;
     char sensor_ptr_release_idx = 0;
-    mgmt_intrf_status_t sensor_if_status_l = APM_MGMT_SUCCESS;
-    unsigned sensor_line_buf_1[8];
-    unsigned sensor_line_buf_2[8];
-    unsigned sensor_line_buf_3[8];
+    mgmt_intrf_status_t sensor_if_status_l = APM_MGMT_FAILURE;
+    unsigned sensor_line_buf_1[CONFIG_WINDOW_WIDTH+8];
+    unsigned sensor_line_buf_2[CONFIG_WINDOW_WIDTH+8];
+    unsigned sensor_line_buf_3[CONFIG_WINDOW_WIDTH+8];
 
     unsigned * movable sensor_if_ptr[3] = {&sensor_line_buf_1[0], &sensor_line_buf_2[0], &sensor_line_buf_3[0]};
 
     /* Initialise image senor ports, i2c interface */
     config_image_sensor_ports();
-    //if(CONFIG_SUCCESS == image_sensor_init(imgports.i2c_ports,CONFIG_IN_SLAVE))
-     //   sensor_if_status_l = APM_MGMT_SUCCESS;
+    if(CONFIG_SUCCESS == image_sensor_init(imgports.i2c_ports,CONFIG_IN_SLAVE)) {
+        sensor_if_status_l = APM_MGMT_SUCCESS;
+    }
 
     while(1){
 
         select {
             case sensorif.apm_mgmt(mgmt_intrf_commands_t command):
-              if(command == SET_RESOLUTION)
+              if(command == SET_SCREEN_RESOLUTION)
                   printstrln("sensor_if: Resoultion received from mgmt_if");
               else if(command == START_OPERATION) {
                   printstrln("sensor_if: Start operation received from mgmt_if");
-                  // start sending exposure, stfrm_out and get first line
-                  fill(sensor_if_ptr[sensor_data_send_ptr_idx]);
+                  operation_started = 1;
+                  get_line(sensor_if_ptr[sensor_data_send_ptr_idx],CONFIG_WINDOW_HEIGHT,CONFIG_WINDOW_WIDTH);
               }
+              else if(command == STOP_OPERATION)
+                  operation_started = 0;
 
               sensorif.request_response();
               break;
@@ -164,29 +195,18 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
               sensor_if_status = sensor_if_status_l;
               break;
 
-            case apm_us.get_new_line(unsigned * movable &line_buf_ptr): {
+            case operation_started => apm_us.get_new_line(unsigned * movable &line_buf_ptr): {
               line_buf_ptr = move(sensor_if_ptr[sensor_data_send_ptr_idx++]);
               sensor_data_send_ptr_idx %= 3;
-              fill(sensor_if_ptr[sensor_data_send_ptr_idx]);
+              get_line(sensor_if_ptr[sensor_data_send_ptr_idx],CONFIG_WINDOW_HEIGHT,CONFIG_WINDOW_WIDTH);
               }
               break;
 
-            case apm_us.release_line_buf(unsigned * movable &line_buf_ptr):
+            case operation_started => apm_us.release_line_buf(unsigned * movable &line_buf_ptr):
               sensor_if_ptr[sensor_ptr_release_idx++] = move(line_buf_ptr);
               sensor_ptr_release_idx %= 3;
               break;
         }
     }
 }
-#if 0
-void image_sensor_server(void) {
 
-  config_data_port(imgports);
-  if(CONFIG_SUCCESS == image_sensor_init(imgports.i2c_ports,CONFIG_IN_SLAVE)) {
-
-    while(1) {
-
-    } /**< Image sensor slave mode core functionality begins here... */
-  } /**< Image sensor initialisation */
-}
-#endif
