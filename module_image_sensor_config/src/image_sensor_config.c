@@ -110,45 +110,52 @@ int image_sensor_init(struct r_i2c *i2c_l,unsigned opt_mode) {
     // reset all register value to its default state
     img_snsr_init_val = SOFT_RESET_ENABLE | AUTO_BLOCK_SOFT_RESET_ENABLE;
     if(CONFIG_SUCCESS == image_sensor_i2c_write(REG_SOFT_RESET,img_snsr_init_val)) {
+        /* The certain register contains shadowed bit(s), write gets effective from next frame.
+         * Total Frame Time @ 25MHz = 444,154 pixel clocks/25MHz = 17766.16uSec
+         */
+        delay_microseconds(17767);
+        // enable auto gain control and disable auto exposure control
+        image_sensor_i2c_write(REG_AEC_AGC_ENABLE_A_B,(AEC_CONTEXT_A_DISABLE | AGC_CONTEXT_A_ENABLE));
+        delay_microseconds(17767);
+        // configure tiled digital gain
+        for(mt9v034_i2c_reg_addr_t reg_idx = REG_TILE_WEIGHT_GAIN_X0_Y0; reg_idx <= REG_TILE_WEIGHT_GAIN_X4_Y4; reg_idx++){
+            image_sensor_i2c_write(reg_idx,(TILE_GAIN_CONTEXT_A(10) | GAIN_SAMPLE_WEIGHT(15)));
+            delay_microseconds(17767);
+        }
+        // configure vertical blank in case of slave mode
+        if(opt_mode == CONFIG_IN_SLAVE) {
+            image_sensor_i2c_write(REG_VERTICAL_BLANK_CONTEXT_A,VERTICAL_BLANK(4));
+        }
+        // configure window height
+        image_sensor_i2c_write(REG_WINDOW_HEIGHT_CONTEXT_A,WINDOW_HEIGHT(CONFIG_WINDOW_HEIGHT));
+        delay_microseconds(17767);
+        // configure window width
+        image_sensor_i2c_write(REG_WINDOW_WIDTH_CONTEXT_A,WINDOW_WIDTH(CONFIG_WINDOW_WIDTH));
+        // configure horzontal blank
+        image_sensor_i2c_write(REG_HORIZONTAL_BLANK_CONTEXT_A,HORIZONTAL_BLANK(/*(MT9V034_MAX_WIDTH-CONFIG_WINDOW_WIDTH)*/94));
+        delay_microseconds(17767);
+        // configure column start
+        img_snsr_init_val = ((MT9V034_MAX_WIDTH-CONFIG_WINDOW_WIDTH)/2); // 1-752
+        image_sensor_i2c_write(REG_COLUMN_START_CONTEXT_A,COLUMN_START(img_snsr_init_val));
+        delay_microseconds(17767);
+        // configure row start
+        img_snsr_init_val = ((MT9V034_MAX_HEIGHT-CONFIG_WINDOW_HEIGHT)/2); // 4-482
+        image_sensor_i2c_write(REG_ROW_START_CONTEXT_A,ROW_START(img_snsr_init_val));
 
         /* Configure the default chip control values */
         img_snsr_init_val = PROGRESSIVE_SCAN_MODE | STEREOSCOPY_MODE_DISABLE | STEREOSCOPIC_MASTER_MODE | \
                             PARALLEL_OUT_ENABLE | PIX_READ_SIMULTANEOUS_MODE | DEFECTIVE_PIXEL_CORRECTION_ENABLE;
 
         if(opt_mode == CONFIG_IN_MASTER)
-          img_snsr_init_val |= MASTER_MODE;
+            img_snsr_init_val |= MASTER_MODE;
         else if(opt_mode == SNAPSHOT_MODE)
-          img_snsr_init_val |= SNAPSHOT_MODE;
+            img_snsr_init_val |= SNAPSHOT_MODE;
         else
-          img_snsr_init_val |= SLAVE_MODE;
+            img_snsr_init_val |= SLAVE_MODE;
 
-#if 0 // TODO: enable this, when image_sensor_config() is finished
-        return image_sensor_i2c_write(REG_CHIP_CONTROL,img_snsr_init_val);
-#else // TODO: remove this, when image_sensor_config() is finished
-        if(CONFIG_SUCCESS == image_sensor_i2c_write(REG_CHIP_CONTROL,img_snsr_init_val)) {
-            // enable auto gain control and disable auto exposure control
-            image_sensor_i2c_write(REG_AEC_AGC_ENABLE_A_B,(AEC_CONTEXT_A_DISABLE | AGC_CONTEXT_A_ENABLE));
-            // configure tiled digital gain
-            for(mt9v034_i2c_reg_addr_t reg_idx = REG_TILE_WEIGHT_GAIN_X0_Y0; reg_idx <= REG_TILE_WEIGHT_GAIN_X4_Y4; reg_idx++){
-                image_sensor_i2c_write(reg_idx,(TILE_GAIN_CONTEXT_A(10) | GAIN_SAMPLE_WEIGHT(15)));
-            }
-            // configure vertical blank in case of slave mode
-            if(opt_mode == CONFIG_IN_SLAVE) {
-              image_sensor_i2c_write(REG_VERTICAL_BLANK_CONTEXT_A,VERTICAL_BLANK(4));
-            }
-            // configure window height
-            image_sensor_i2c_write(REG_WINDOW_HEIGHT_CONTEXT_A,WINDOW_HEIGHT(CONFIG_WINDOW_HEIGHT));
-            // configure window width
-            image_sensor_i2c_write(REG_WINDOW_WIDTH_CONTEXT_A,WINDOW_WIDTH(CONFIG_WINDOW_WIDTH));
-            // configure horzontal blank
-            image_sensor_i2c_write(REG_HORIZONTAL_BLANK_CONTEXT_A,HORIZONTAL_BLANK((MT9V034_MAX_WIDTH-CONFIG_WINDOW_WIDTH)));
-            // configure row start
-            image_sensor_i2c_write(REG_ROW_START_CONTEXT_A,ROW_START(((MT9V034_MAX_HEIGHT-CONFIG_WINDOW_HEIGHT)/2)));
-            // configure column start
-            return(image_sensor_i2c_write(REG_COLUMN_START_CONTEXT_A,COLUMN_START(((MT9V034_MAX_WIDTH-CONFIG_WINDOW_WIDTH)/2))));
-
-        }
-#endif
+        img_snsr_init_val = image_sensor_i2c_write(REG_CHIP_CONTROL,img_snsr_init_val);
+        delay_microseconds(17767);
+        return img_snsr_init_val;
     }
 
     return CONFIG_FAILURE;

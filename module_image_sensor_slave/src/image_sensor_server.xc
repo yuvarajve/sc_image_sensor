@@ -132,7 +132,7 @@ static inline void get_line(unsigned buffer[],unsigned lines_per_frame,unsigned 
 
    // trigger stln_out high
    imgports_slave.stln_out <: 1;
-   delay_microseconds(16);
+   delay_microseconds(11);
 
    for(unsigned loop = 0; loop < words_per_line/4; loop++){
        buffer[loop] = do_input(imgports.data_port);
@@ -140,7 +140,7 @@ static inline void get_line(unsigned buffer[],unsigned lines_per_frame,unsigned 
 
    // trigger stln_out low
    imgports_slave.stln_out <: 0;
-   delay_microseconds(1);
+   delay_microseconds(20);
 
    no_of_lines++;
    no_of_lines %= lines_per_frame;

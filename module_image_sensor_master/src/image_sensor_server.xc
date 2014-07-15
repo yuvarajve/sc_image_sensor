@@ -33,8 +33,7 @@ on tile[1] : image_sensor_ports imgports = { //circle slot
 static inline void config_image_sensor_ports(void) {
 
     configure_clock_src(imgports.clk1, imgports.pix_clk);   // Port clock setup
-    configure_in_port(imgports.data_port,imgports.clk1);
-    configure_in_port(imgports.line_valid,imgports.clk1);
+    configure_in_port_strobed_slave(imgports.data_port, imgports.line_valid, imgports.clk1);
     start_clock(imgports.clk1);
 }
 /****************************************************************************************
