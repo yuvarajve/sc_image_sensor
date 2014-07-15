@@ -6,7 +6,6 @@
 #include <xs1.h>
 #include <platform.h>
 #include <print.h>
-#include <timer.h>
 
 #include "pipeline_interface.h"
 #include "image_sensor_config.h"
@@ -17,7 +16,6 @@ typedef struct image_sensor_ports{
   in port frame_valid;
   in port line_valid;
   in buffered port:32 data_port;
-  r_i2c i2c_ports;
   clock clk1;
 }image_sensor_ports;
 
@@ -29,9 +27,11 @@ typedef struct img_snsr_slave_mode_ports{
 }img_snsr_slave_mode_ports;
 
 // Port declaration
+on tile[1] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
+
 on tile[1] : image_sensor_ports imgports = { //circle slot
-   XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_16B,
-   {XS1_PORT_1H, XS1_PORT_1I, 1000}, XS1_CLKBLK_1
+   XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_8C,
+   XS1_CLKBLK_1
 };
 
 on tile[1] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
@@ -123,6 +123,8 @@ static inline void trigger_exposure_stfrm_out(void)
 static inline void get_line(unsigned buffer[],unsigned lines_per_frame,unsigned words_per_line) {
 
    static unsigned no_of_lines = 0;
+   timer line_timer;
+   unsigned line_tick = 0;
 
    // trigger exposure and stfrm_out for the very first of line of each frame.
    if(!no_of_lines){
@@ -132,7 +134,9 @@ static inline void get_line(unsigned buffer[],unsigned lines_per_frame,unsigned 
 
    // trigger stln_out high
    imgports_slave.stln_out <: 1;
-   delay_microseconds(11);
+   /* delay_microsecond() was not so precise, hence using timer */
+   line_timer :> line_tick;
+   line_timer when timerafter(line_tick+700) :> void;
 
    for(unsigned loop = 0; loop < words_per_line/4; loop++){
        buffer[loop] = do_input(imgports.data_port);
@@ -140,7 +144,8 @@ static inline void get_line(unsigned buffer[],unsigned lines_per_frame,unsigned 
 
    // trigger stln_out low
    imgports_slave.stln_out <: 0;
-   delay_microseconds(20);
+   line_timer :> line_tick;
+   line_timer when timerafter(line_tick+2250) :> void;
 
    no_of_lines++;
    no_of_lines %= lines_per_frame;
@@ -170,7 +175,7 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
 
     /* Initialise image senor ports, i2c interface */
     config_image_sensor_ports();
-    if(CONFIG_SUCCESS == image_sensor_init(imgports.i2c_ports,CONFIG_IN_SLAVE)) {
+    if(CONFIG_SUCCESS == image_sensor_init(i2c_ports,CONFIG_IN_SLAVE)) {
         sensor_if_status_l = APM_MGMT_SUCCESS;
     }
 

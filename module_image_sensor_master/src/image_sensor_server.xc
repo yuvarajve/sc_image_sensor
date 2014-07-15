@@ -6,7 +6,6 @@
 #include <xs1.h>
 #include <platform.h>
 #include <print.h>
-#include <timer.h>
 
 #include "pipeline_interface.h"
 #include "image_sensor_config.h"
@@ -17,13 +16,14 @@ typedef struct image_sensor_ports{
   in port frame_valid;
   in port line_valid;
   in buffered port:32 data_port;
-  r_i2c i2c_ports;
   clock clk1;
 }image_sensor_ports;
 
 // Port declaration
+on tile[1] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
+
 on tile[1] : image_sensor_ports imgports = { //circle slot
-   XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_16B,
+   XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_8C,
    {XS1_PORT_1H, XS1_PORT_1I, 1000}, XS1_CLKBLK_1
 };
 
@@ -68,7 +68,7 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
 
     /* Initialise image senor ports, i2c interface */
     config_image_sensor_ports();
-    if(CONFIG_SUCCESS == image_sensor_init(imgports.i2c_ports,CONFIG_IN_MASTER)) {
+    if(CONFIG_SUCCESS == image_sensor_init(i2c_ports,CONFIG_IN_MASTER)) {
         sensor_if_status_l = APM_MGMT_SUCCESS;
     }
 
