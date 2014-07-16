@@ -9,15 +9,15 @@
 #define NOF_LINES_FOR_BAYER_PROCESS    2
 
 typedef enum {
+    // Not used command
+    NOT_USED_COMMAND,
     // Sensor Interface commands
     SET_SCREEN_RESOLUTION,
-    SET_ROW_START,
-    SET_COLUMN_START,
-    SET_HORIZONTAL_BLANK,
-    SET_VERTICAL_BLANK,
-    SET_TEST_PATTERN,
+    SET_COLOR_MODE,
+    SET_REGION_OF_INTEREST,
     // Bayer Interface commands
     BAYER_MODE,
+    // Common commands
     START_OPERATION,
     STOP_OPERATION
 }mgmt_intrf_commands_t;
@@ -27,8 +27,38 @@ typedef enum {
     APM_MGMT_SUCCESS
 }mgmt_intrf_status_t;
 
+typedef struct {
+  unsigned short column_start;
+  unsigned short row_start;
+  unsigned short horiz_blank;
+  unsigned short verti_blank;
+  unsigned short tiled_dig_gain;
+}mgmt_resolution_param_t;
+
+typedef enum {
+  NOT_USED_COLOR,
+  GREYSCALE,
+  RGB
+}mgmt_color_param_t;
+
+typedef struct {
+  unsigned short height;
+  unsigned short width;
+}mgmt_ROI_param_t;
+
+typedef enum {
+  NOT_USED_MODE,
+  PIXEL_DOUBLE,
+  BILINEAR,
+  GRADIENT
+}mgmt_bayer_param_t;
+
+/*
+ * add other management interface parameters here...
+ */
+
 interface mgmt_interface {
-  [[guarded]] void apm_mgmt(mgmt_intrf_commands_t command);
+  [[guarded]] void apm_mgmt(mgmt_intrf_commands_t command, void * unsafe param);
   [[guarded]] [[notification]] slave void request_response(void);
   [[guarded]] [[clears_notification]] mgmt_intrf_status_t get_response(void);
 };

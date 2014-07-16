@@ -7,6 +7,7 @@
 #define IMAGE_SENSOR_CONFIG_H_
 
 #include "i2c.h"
+#include "mt9v034.h"
 
 #define CONFIG_SUCCESS                  1
 #define CONFIG_FAILURE                  0
@@ -27,6 +28,18 @@
 #define CONFIG_WINDOW_WIDTH        480
 #endif
 
-int image_sensor_init(REFERENCE_PARAM(struct r_i2c,i2c_master),unsigned opt_mode);
+typedef enum {
+    E_COLUMN_START,
+    E_ROW_START,
+    E_HORIZ_BLANK,
+    E_VERTI_BLANK,
+    E_TILED_DIG_GAIN,
+    E_WIN_HEIGHT,
+    E_WIN_WIDTH,
+    E_COLOR_MODE,
+    E_SIZE_OF_CONFIG_ARRAY   //this should be always last
+}image_sensor_basic_config_idx_t;
+
+int image_sensor_init(REFERENCE_PARAM(struct r_i2c,i2c_master),unsigned short config_param[E_SIZE_OF_CONFIG_ARRAY], unsigned opt_mode);
 
 #endif /* IMAGE_SENSOR_CONFIG_H_ */

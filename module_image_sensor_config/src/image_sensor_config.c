@@ -5,12 +5,25 @@
 
 #include <xs1.h>
 #include <stdio.h>
+#include <timer.h>
 #include "mt9v034_regs.h"
 #include "mt9v034.h"
 #include "image_sensor_config.h"
 
+#define TOTAL_FRAME_TIME_USEC    17767
+
 struct r_i2c *i2c_interface_g;
 unsigned char reg_lock_status_g = MT9V034_REG_UNLOCK;
+/****************************************************************************************
+ *
+ ***************************************************************************************/
+static inline unsigned char check_for_shadowed_reg(mt9v034_i2c_reg_addr_t reg_addr){
+    for(unsigned idx = 0; idx < NOF_SHADOWED_REGS; idx++) {
+        if(reg_addr == mt9v034_shadowed_regs[idx])
+            return 1;
+    }
+    return 0;
+}
 /****************************************************************************************
  *
  ***************************************************************************************/
@@ -36,8 +49,17 @@ static inline int image_sensor_i2c_write(mt9v034_i2c_reg_addr_t reg_addr,unsigne
     data[0] = (unsigned char )((wr_data & 0xFF00) >> 8);
     data[1] = (unsigned char )(wr_data & 0x00FF);
 
-    if( CONFIG_SUCCESS == i2c_master_write_reg(MT9V034_I2C_ADDR,reg_addr,data,sizeof(unsigned short),i2c_interface_g) )
+    if( CONFIG_SUCCESS == i2c_master_write_reg(MT9V034_I2C_ADDR,reg_addr,data,sizeof(unsigned short),i2c_interface_g) ) {
+      /* Once write is success, check whether the updated register is shadowed,
+       * if so include total frame time delay to update the register
+       * The certain register contains shadowed bit(s), write gets effective from next frame.
+       * Total Frame Time @ 25MHz = 444,154 pixel clocks/25MHz = 17766.16uSec
+       */
+      if(check_for_shadowed_reg(reg_addr))
+          delay_microseconds(TOTAL_FRAME_TIME_USEC);
+
       return CONFIG_SUCCESS;
+    }
 
     return CONFIG_FAILURE;
 }
@@ -93,7 +115,7 @@ unsigned char image_sensor_get_reg_lock_status(void) {
 /****************************************************************************************
  *
  ***************************************************************************************/
-int image_sensor_init(struct r_i2c *i2c_l,unsigned opt_mode) {
+int image_sensor_init(struct r_i2c *i2c_l,unsigned short config_param[E_SIZE_OF_CONFIG_ARRAY],unsigned opt_mode) {
 
     unsigned short img_snsr_init_val = 0;
     i2c_interface_g = i2c_l;
@@ -109,38 +131,33 @@ int image_sensor_init(struct r_i2c *i2c_l,unsigned opt_mode) {
 
     // reset all register value to its default state
     img_snsr_init_val = SOFT_RESET_ENABLE | AUTO_BLOCK_SOFT_RESET_ENABLE;
-    if(CONFIG_SUCCESS == image_sensor_i2c_write(REG_SOFT_RESET,img_snsr_init_val)) {
-        /* The certain register contains shadowed bit(s), write gets effective from next frame.
-         * Total Frame Time @ 25MHz = 444,154 pixel clocks/25MHz = 17766.16uSec
-         */
-        delay_microseconds(17767);
+    if(CONFIG_SUCCESS == image_sensor_i2c_write(REG_RESET,img_snsr_init_val)) {
+
         // enable auto gain control and disable auto exposure control
-        image_sensor_i2c_write(REG_AEC_AGC_ENABLE_A_B,(AEC_CONTEXT_A_DISABLE | AGC_CONTEXT_A_ENABLE));
-        delay_microseconds(17767);
+        image_sensor_i2c_write(REG_AGC_AEC_ENABLE_A_B,(AEC_CONTEXT_A_DISABLE | AGC_CONTEXT_A_ENABLE));
+
         // configure tiled digital gain
-        for(mt9v034_i2c_reg_addr_t reg_idx = REG_TILE_WEIGHT_GAIN_X0_Y0; reg_idx <= REG_TILE_WEIGHT_GAIN_X4_Y4; reg_idx++){
-            image_sensor_i2c_write(reg_idx,(TILE_GAIN_CONTEXT_A(10) | GAIN_SAMPLE_WEIGHT(15)));
-            delay_microseconds(17767);
+        for(mt9v034_i2c_reg_addr_t reg_idx = REG_TILE_DIGITAL_GAIN_X0_Y0; reg_idx <= REG_TILE_DIGITAL_GAIN_X4_Y4; reg_idx++){
+            image_sensor_i2c_write(reg_idx,(TILE_GAIN_CONTEXT_A(config_param[E_TILED_DIG_GAIN]) | GAIN_SAMPLE_WEIGHT(15)));
+
         }
         // configure vertical blank in case of slave mode
         if(opt_mode == CONFIG_IN_SLAVE) {
-            image_sensor_i2c_write(REG_VERTICAL_BLANK_CONTEXT_A,VERTICAL_BLANK(4));
+            image_sensor_i2c_write(REG_VERTICAL_BLANK_CONTEXT_A,VERTICAL_BLANK(config_param[E_VERTI_BLANK]));
         }
         // configure window height
-        image_sensor_i2c_write(REG_WINDOW_HEIGHT_CONTEXT_A,WINDOW_HEIGHT(CONFIG_WINDOW_HEIGHT));
-        delay_microseconds(17767);
+        image_sensor_i2c_write(REG_WINDOW_HEIGHT_CONTEXT_A,WINDOW_HEIGHT(config_param[E_WIN_HEIGHT]));
+
         // configure window width
-        image_sensor_i2c_write(REG_WINDOW_WIDTH_CONTEXT_A,WINDOW_WIDTH(CONFIG_WINDOW_WIDTH));
+        image_sensor_i2c_write(REG_WINDOW_WIDTH_CONTEXT_A,WINDOW_WIDTH(config_param[E_WIN_WIDTH]));
         // configure horzontal blank
-        image_sensor_i2c_write(REG_HORIZONTAL_BLANK_CONTEXT_A,HORIZONTAL_BLANK(/*(MT9V034_MAX_WIDTH-CONFIG_WINDOW_WIDTH)*/94));
-        delay_microseconds(17767);
+        image_sensor_i2c_write(REG_HORIZONTAL_BLANK_CONTEXT_A,HORIZONTAL_BLANK(config_param[E_HORIZ_BLANK]));
+
         // configure column start
-        img_snsr_init_val = ((MT9V034_MAX_WIDTH-CONFIG_WINDOW_WIDTH)/2); // 1-752
-        image_sensor_i2c_write(REG_COLUMN_START_CONTEXT_A,COLUMN_START(img_snsr_init_val));
-        delay_microseconds(17767);
+        image_sensor_i2c_write(REG_COLUMN_START_CONTEXT_A,COLUMN_START(config_param[E_COLUMN_START]));
+
         // configure row start
-        img_snsr_init_val = ((MT9V034_MAX_HEIGHT-CONFIG_WINDOW_HEIGHT)/2); // 4-482
-        image_sensor_i2c_write(REG_ROW_START_CONTEXT_A,ROW_START(img_snsr_init_val));
+        image_sensor_i2c_write(REG_ROW_START_CONTEXT_A,ROW_START(config_param[E_ROW_START]));
 
         /* Configure the default chip control values */
         img_snsr_init_val = PROGRESSIVE_SCAN_MODE | STEREOSCOPY_MODE_DISABLE | STEREOSCOPIC_MASTER_MODE | \
@@ -153,9 +170,7 @@ int image_sensor_init(struct r_i2c *i2c_l,unsigned opt_mode) {
         else
             img_snsr_init_val |= SLAVE_MODE;
 
-        img_snsr_init_val = image_sensor_i2c_write(REG_CHIP_CONTROL,img_snsr_init_val);
-        delay_microseconds(17767);
-        return img_snsr_init_val;
+        return(image_sensor_i2c_write(REG_CHIP_CONTROL,img_snsr_init_val));
     }
 
     return CONFIG_FAILURE;

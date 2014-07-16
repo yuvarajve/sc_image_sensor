@@ -7,6 +7,7 @@
 #include <platform.h>
 #include <print.h>
 #include <timer.h>
+#include <stdio.h>
 
 #include "pipeline_interface.h"
 #include "image_sensor_server.h"
@@ -38,6 +39,12 @@ void mgmt_intrf(interface mgmt_interface client mgr_sensor,
     char issue_cmd_flag = 0;
     char cmd_to_issue = '1';
     char next_cmd_to_issue = '1';
+    /**< management interface parameters */
+    mgmt_resolution_param_t mgmt_resolution_l;
+    mgmt_color_param_t      mgmt_color_mode_l;
+    mgmt_ROI_param_t        mgmt_roi_l;
+    mgmt_bayer_param_t      mgmt_bayer_mode_l;
+    ///////////////////////////////////////////
 
     mgmt_timer :> mgmt_timer_tick;
 
@@ -72,23 +79,54 @@ void mgmt_intrf(interface mgmt_interface client mgr_sensor,
                   case '1':
                       //send resolution to sensor_if
                       printstrln("mgmt_if:Sending Resolution to sensor_if");
-                      mgr_sensor.apm_mgmt(SET_SCREEN_RESOLUTION);
+                      //TODO: Remove these hardcoded values
+                      mgmt_resolution_l.column_start = 136;
+                      mgmt_resolution_l.row_start = 106;
+                      mgmt_resolution_l.horiz_blank = 94;
+                      mgmt_resolution_l.verti_blank = 4;
+                      mgmt_resolution_l.tiled_dig_gain = 10;
+
+                      unsafe{ mgr_sensor.apm_mgmt(SET_SCREEN_RESOLUTION,&mgmt_resolution_l); }
+
                       next_cmd_to_issue = '2';
                       break;
 
                   case '2':
-                      // send bayer mode to bayer_if
-                      printstrln("mgmt_if:Sending bayer mode to bayer_if");
-                      mgr_bayer.apm_mgmt(BAYER_MODE);
+                      //send color to sensor_if
+                      printstrln("mgmt_if:Sending Color Mode to sensor_if");
+                      mgmt_color_mode_l = RGB;
+
+                      unsafe{ mgr_sensor.apm_mgmt(SET_COLOR_MODE,&mgmt_color_mode_l); }
+
                       next_cmd_to_issue = '3';
                       break;
 
                   case '3':
+                      //send region of interest to sensor_if
+                      printstrln("mgmt_if:Sending Region of Interest to sensor_if");
+                      //TODO: Remove these hardcoded values
+                      mgmt_roi_l.height = 272;
+                      mgmt_roi_l.width = 480;
+
+                      unsafe{ mgr_sensor.apm_mgmt(SET_REGION_OF_INTEREST,&mgmt_roi_l); }
+
+                      next_cmd_to_issue = '4';
+                      break;
+
+                  case '4':
+                      // send bayer mode to bayer_if
+                      printstrln("mgmt_if:Sending bayer mode to bayer_if");
+                      mgmt_bayer_mode_l = PIXEL_DOUBLE;
+                      unsafe {mgr_bayer.apm_mgmt(BAYER_MODE,&mgmt_bayer_mode_l);}
+                      next_cmd_to_issue = '5';
+                      break;
+
+                  case '5':
                       // send start operation to sensor_if and bayer_if
                       printstrln("mgmt_if:Sending start operation to sensor_if");
-                      mgr_sensor.apm_mgmt(START_OPERATION);
+                      unsafe{ mgr_sensor.apm_mgmt(START_OPERATION,NULL); }
                       printstrln("mgmt_if:Sending start operation to bayer_if");
-                      mgr_bayer.apm_mgmt(START_OPERATION);
+                      unsafe{ mgr_bayer.apm_mgmt(START_OPERATION,NULL); }
                       next_cmd_to_issue = '0';
                       break;
 
@@ -101,64 +139,7 @@ void mgmt_intrf(interface mgmt_interface client mgr_sensor,
       }
     }
 }
-#if 0
-/****************************************************************************************
- *
- ***************************************************************************************/
-void bayer_if(interface mgmt_interface server bayerif,
-        interface pipeline_interface client apm_ds) {
 
-    char operation_started = 0;
-    // added this to guard, get new line starts only after responding to management interface
-    char operation_start_responded = 0;
-    char nof_lines_for_bayer_process = 0;
-    unsigned * movable bayer_line_buf[NOF_LINES_FOR_BAYER_PROCESS];
-
-    while(1){
-
-        select {
-            case bayerif.apm_mgmt(mgmt_intrf_commands_t command):
-                if(command == BAYER_MODE)
-                    printstrln("bayer_if: Bayer mode received from mgmt_if");
-                else if(command == START_OPERATION) {
-                    printstrln("bayer_if: Start operation received from mgmt_if");
-                    operation_started = 1;
-                    operation_start_responded = 0;
-                }
-                else if(command == STOP_OPERATION) {
-                    operation_started = 0;
-                    operation_start_responded = 0;
-                }
-
-
-                bayerif.request_response();
-                break;
-
-            case bayerif.get_response(void) -> mgmt_intrf_status_t bayer_if_status:
-                bayer_if_status = APM_MGMT_SUCCESS;
-                operation_started ? (operation_start_responded = 1) : (operation_start_responded = 0);
-                break;
-
-            (operation_start_responded) => default : {
-                if(nof_lines_for_bayer_process < NOF_LINES_FOR_BAYER_PROCESS) {
-                   // get new line twice for bayer interpolation
-                   // TODO: change the macro NOF_LINES_FOR_BAYER incase more/less lines required
-                   apm_ds.get_new_line(bayer_line_buf[nof_lines_for_bayer_process]);
-                   nof_lines_for_bayer_process++;
-                }
-                else {
-                  //TODO: do interpolation process before releasing the buffers.
-                  for(int loop = 0; loop < nof_lines_for_bayer_process; loop++)
-                      apm_ds.release_line_buf(bayer_line_buf[loop]);
-
-                  nof_lines_for_bayer_process = 0; // reset and start getting the next lines
-                }
-            }
-            break;
-        }
-    }
-}
-#endif
 #pragma unsafe arrays
 inline unsafe void get_row(streaming chanend c, unsigned * unsafe dataPtr, unsigned width){
     unsigned n_data = width/4;
@@ -312,7 +293,6 @@ void app(streaming chanend c_img, chanend c_dc){
 /****************************************************************************************
  *
  ***************************************************************************************/
-#pragma unsafe arrays
 void bayer_if(interface mgmt_interface server bayerif,
         interface pipeline_interface client apm_ds, streaming chanend img_sen) {
 
@@ -321,17 +301,24 @@ void bayer_if(interface mgmt_interface server bayerif,
     char operation_start_responded = 0;
     //char nof_lines_for_bayer_process = 0;
     unsigned * movable bayer_line_buf;
+    // bayer mode parameter from management interface
+    mgmt_bayer_param_t bayer_mode_l = NOT_USED_MODE;
 
     while(1){
 
         select {
-            case bayerif.apm_mgmt(mgmt_intrf_commands_t command):
-                if(command == BAYER_MODE)
+            case bayerif.apm_mgmt(mgmt_intrf_commands_t command,void * unsafe param):
+                if( (command == BAYER_MODE) && (param != NULL) ) {
                     printstrln("bayer_if: Bayer mode received from mgmt_if");
-                else if(command == START_OPERATION) {
+                    bayer_mode_l = *(mgmt_bayer_param_t *)param;
+                }
+                else if( (command == START_OPERATION) && (param == NULL) ){
                     printstrln("bayer_if: Start operation received from mgmt_if");
-                    operation_started = 1;
-                    operation_start_responded = 0;
+                    if(bayer_mode_l == PIXEL_DOUBLE){
+                      printstrln("bayer_if: PIXEL_DOUBLE mode received....!!!");
+                      operation_started = 1;
+                      operation_start_responded = 0;
+                    }
                 }
                 else if(command == STOP_OPERATION) {
                     operation_started = 0;
