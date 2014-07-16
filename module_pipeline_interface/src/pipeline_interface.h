@@ -64,7 +64,7 @@ interface mgmt_interface {
 };
 
 interface pipeline_interface {
-  [[guarded]] void get_new_line(unsigned * movable &line_buf_ptr);
+  [[guarded]] unsigned get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t * metadata);
   [[guarded]] void release_line_buf(unsigned * movable &line_buf_ptr);
 };
 

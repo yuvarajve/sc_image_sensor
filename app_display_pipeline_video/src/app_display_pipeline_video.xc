@@ -303,6 +303,8 @@ void bayer_if(interface mgmt_interface server bayerif,
     unsigned * movable bayer_line_buf;
     // bayer mode parameter from management interface
     mgmt_bayer_param_t bayer_mode_l = NOT_USED_MODE;
+    // metadata required for bayer
+    mgmt_ROI_param_t metadata;
 
     while(1){
 
@@ -335,7 +337,11 @@ void bayer_if(interface mgmt_interface server bayerif,
                 break;
 
             (operation_start_responded) => default : {
-              apm_ds.get_new_line(bayer_line_buf);
+
+              if(apm_ds.get_new_line(bayer_line_buf,&metadata)){
+                 //do bayer operation based on metadata here...
+              }
+
               for(unsigned l = 0; l < LCD_WIDTH/4; l++){
                   img_sen <: bayer_line_buf[l];
               }

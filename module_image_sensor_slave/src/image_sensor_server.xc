@@ -45,6 +45,8 @@ on tile[1] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
  * */
 unsigned lines_per_frame_g = CONFIG_WINDOW_HEIGHT;
 unsigned words_per_line_g = CONFIG_WINDOW_WIDTH/4;
+unsigned get_line_num_g = 0;
+
 mgmt_resolution_param_t sensor_resolution_param_g = {
  136, 106, 94, 4, 10
 };
@@ -137,7 +139,7 @@ static inline void trigger_exposure_stfrm_out(void)
 /****************************************************************************************
  *
  ***************************************************************************************/
-static inline void get_line(unsigned buffer[]) {
+static inline unsigned get_line(unsigned buffer[]) {
 
    static unsigned no_of_lines = 0;
 
@@ -158,10 +160,12 @@ static inline void get_line(unsigned buffer[]) {
 
    // trigger stln_out low
    imgports_slave.stln_out <: 0;
-   delay_ticks(2100);
+   delay_ticks(2000);
 
    no_of_lines++;
    no_of_lines %= lines_per_frame_g;
+
+   return no_of_lines;
 
 }
 /***************************************************************************//**
@@ -213,6 +217,7 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
               else if( (command == SET_COLOR_MODE) && (param != NULL) ){
                   printstrln("sensor_if: Color Mode received from mgmt_if");
                   sensor_color_param_g = *(mgmt_color_param_t *)param;
+                  /* copy to sensor config array */
                   memcpy(sensor_config_array+7,&sensor_color_param_g,sizeof(unsigned short));
               }
               else if( (command == SET_REGION_OF_INTEREST) && (param != NULL) ){
@@ -228,7 +233,7 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
                   if(CONFIG_SUCCESS == image_sensor_init(i2c_ports,sensor_config_array,CONFIG_IN_SLAVE)) {
                       sensor_if_status_l = APM_MGMT_SUCCESS;
                       operation_started = 1;
-                      get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
+                      get_line_num_g = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
                   }
               }
               else if(command == STOP_OPERATION)
@@ -241,10 +246,18 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
               sensor_if_status = sensor_if_status_l;
               break;
 
-            case operation_started => apm_us.get_new_line(unsigned * movable &line_buf_ptr): {
+            case operation_started => apm_us.get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t * metadata) -> {unsigned line_num}: {
+              // for every first line of a new frame, send metadata.
+              if(get_line_num_g == 1)
+                  line_num = get_line_num_g;
+              else
+                  line_num = 0;
+              /* upstream interface should simply ignore this data if line_num is zero */
+
+              *metadata = sensor_hei_wid_param_g;
               line_buf_ptr = move(sensor_if_ptr[sensor_data_send_ptr_idx++]);
               sensor_data_send_ptr_idx %= 3;
-              get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
+              get_line_num_g = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
               }
               break;
 
