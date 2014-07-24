@@ -131,6 +131,7 @@ int image_sensor_init(struct r_i2c *i2c_l,unsigned short config_param[E_SIZE_OF_
 
     // reset all register value to its default state
     img_snsr_init_val = SOFT_RESET_ENABLE | AUTO_BLOCK_SOFT_RESET_ENABLE;
+
     if(CONFIG_SUCCESS == image_sensor_i2c_write(REG_RESET,img_snsr_init_val)) {
 
         // enable auto gain control and disable auto exposure control
@@ -141,10 +142,16 @@ int image_sensor_init(struct r_i2c *i2c_l,unsigned short config_param[E_SIZE_OF_
             image_sensor_i2c_write(reg_idx,(TILE_GAIN_CONTEXT_A(config_param[E_TILED_DIG_GAIN]) | GAIN_SAMPLE_WEIGHT(15)));
 
         }
-        // configure vertical blank in case of slave mode
+
+        // configure vertical blank value as 4, in case of slave mode
         if(opt_mode == CONFIG_IN_SLAVE) {
-            image_sensor_i2c_write(REG_VERTICAL_BLANK_CONTEXT_A,VERTICAL_BLANK(config_param[E_VERTI_BLANK]));
+            img_snsr_init_val = 4;
+        }else {
+            img_snsr_init_val = config_param[E_VERTI_BLANK];
         }
+
+        // configure vertical blank
+        image_sensor_i2c_write(REG_VERTICAL_BLANK_CONTEXT_A,VERTICAL_BLANK(img_snsr_init_val));
         // configure window height
         image_sensor_i2c_write(REG_WINDOW_HEIGHT_CONTEXT_A,WINDOW_HEIGHT(config_param[E_WIN_HEIGHT]));
 
@@ -165,7 +172,7 @@ int image_sensor_init(struct r_i2c *i2c_l,unsigned short config_param[E_SIZE_OF_
 
         if(opt_mode == CONFIG_IN_MASTER)
             img_snsr_init_val |= MASTER_MODE;
-        else if(opt_mode == SNAPSHOT_MODE)
+        else if(opt_mode == CONFIG_IN_SNAPSHOT)
             img_snsr_init_val |= SNAPSHOT_MODE;
         else
             img_snsr_init_val |= SLAVE_MODE;

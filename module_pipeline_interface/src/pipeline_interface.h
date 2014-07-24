@@ -53,6 +53,23 @@ typedef enum {
   GRADIENT
 }mgmt_bayer_param_t;
 
+typedef union {
+    unsigned pixel_word;
+    struct {
+        unsigned short byte_1;
+        unsigned short byte_2;
+    }pixel_short;
+}line_buf_union_t;
+
+typedef union {
+    unsigned short pixel_short;
+    struct {
+        unsigned char byte_1;
+        unsigned char byte_2;
+    }pixel_char;
+}pixel_buf_union_t;
+
+{unsigned char, unsigned char }get_pixel_char_data(pixel_buf_union_t *pixel_short_data);
 /*
  * add other management interface parameters here...
  */
@@ -64,8 +81,8 @@ interface mgmt_interface {
 };
 
 interface pipeline_interface {
-  [[guarded]] unsigned get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t * metadata);
-  [[guarded]] void release_line_buf(unsigned * movable &line_buf_ptr);
+  [[guarded]] unsigned get_new_line(line_buf_union_t * movable &line_buf_ptr, mgmt_ROI_param_t &metadata);
+  [[guarded]] void release_line_buf(line_buf_union_t * movable &line_buf_ptr);
 };
 
 #endif /* PIPELINE_INTERFACE_H_ */

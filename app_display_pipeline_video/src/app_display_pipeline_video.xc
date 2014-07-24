@@ -15,9 +15,12 @@
 #include "sdram.h"
 #include "display_controller.h"
 
-on tile[0] : lcd_ports lcdports = { //triangle slot
+#define DISPLAY_TILE  1
+#define SENSOR_TILE   0
+
+on tile[DISPLAY_TILE] : lcd_ports lcdports = { //triangle slot
   XS1_PORT_1I, XS1_PORT_1L, XS1_PORT_16B, XS1_PORT_1J, XS1_PORT_1K, XS1_CLKBLK_1 };
-on tile[0] : sdram_ports sdramports = { //star slot
+on tile[DISPLAY_TILE] : sdram_ports sdramports = { //star slot
   XS1_PORT_16A, XS1_PORT_1B, XS1_PORT_1G, XS1_PORT_1C, XS1_PORT_1F, XS1_CLKBLK_2 };
 
 // Registers for performance (video quality) tuning
@@ -141,7 +144,7 @@ void mgmt_intrf(interface mgmt_interface client mgr_sensor,
 }
 
 #pragma unsafe arrays
-inline unsafe void get_row(streaming chanend c, unsigned * unsafe dataPtr, unsigned width){
+static inline unsafe void get_row(streaming chanend c, unsigned * unsafe dataPtr, unsigned width){
     unsigned n_data = width/4;
     for (unsigned i=0; i<n_data; i++){
         c :> dataPtr[i];
@@ -150,12 +153,12 @@ inline unsafe void get_row(streaming chanend c, unsigned * unsafe dataPtr, unsig
 
 
 #pragma unsafe arrays
-inline void store_row (chanend c_dc, unsigned row, unsigned frBuf, intptr_t buf){
+static inline void store_row (chanend c_dc, unsigned row, unsigned frBuf, intptr_t buf){
     display_controller_image_write_line_p(c_dc, row, frBuf, buf);
     display_controller_wait_until_idle_p(c_dc, buf);
 }
 
-inline unsigned short rgb888_to_rgb565(char b, char g, char r) {
+static inline unsigned short rgb888_to_rgb565(char b, char g, char r) {
   return (unsigned short)((r >> 3) & 0x1F) | ((unsigned short)((g >> 2) & 0x3F) << 5) | ((unsigned short)((b >> 3) & 0x1F) << 11);
 }
 
@@ -300,7 +303,7 @@ void bayer_if(interface mgmt_interface server bayerif,
     // added this to guard, get new line starts only after responding to management interface
     char operation_start_responded = 0;
     //char nof_lines_for_bayer_process = 0;
-    unsigned * movable bayer_line_buf;
+    line_buf_union_t * movable bayer_line_buf[2];
     // bayer mode parameter from management interface
     mgmt_bayer_param_t bayer_mode_l = NOT_USED_MODE;
     // metadata required for bayer
@@ -338,14 +341,26 @@ void bayer_if(interface mgmt_interface server bayerif,
 
             (operation_start_responded) => default : {
 
-              if(apm_ds.get_new_line(bayer_line_buf,&metadata)){
+              if(apm_ds.get_new_line(bayer_line_buf[0],metadata)) {
                  //do bayer operation based on metadata here...
+                 /*
+                  //How to use the bayer_line_buf
+                  unsigned char color_cmp_1 = 0,color_cmp_2 = 0,color_cmp_3 = 0,color_cmp_4 = 0;
+                  for(unsigned i = 0; i < LCD_WIDTH; i+= 2) {
+                    // To Access the short variable
+                    unsigned short var_1 = (bayer_line_buf[0]+i)->pixel_short.byte_1;
+                    unsigned short var_2 = (bayer_line_buf[0]+i)->pixel_short.byte_2;
+                    // To Access the individual 8-bit pixel data from short
+                    {color_cmp_1,color_cmp_2} = get_pixel_char_data((pixel_buf_union_t *)&(bayer_line_buf[0]+i)->pixel_short.byte_1);
+                    {color_cmp_3,color_cmp_4} = get_pixel_char_data((pixel_buf_union_t *)&(bayer_line_buf[0]+i)->pixel_short.byte_2);
+                  }
+                  */
               }
 
               for(unsigned l = 0; l < LCD_WIDTH/4; l++){
-                  img_sen <: bayer_line_buf[l];
+                  img_sen <: bayer_line_buf[0][l];
               }
-              apm_ds.release_line_buf(bayer_line_buf);
+              apm_ds.release_line_buf(bayer_line_buf[0]);
             }
             break;
         }
@@ -359,14 +374,14 @@ int main(void) {
     interface pipeline_interface sensor_bayer_intrf;
 
     par {
-        on tile[1]: mgmt_intrf(sensor_mgmt_intrf,bayer_mgmt_intrf);
-        on tile[1]: image_sensor_server(sensor_mgmt_intrf,sensor_bayer_intrf);
-        on tile[1]: bayer_if(bayer_mgmt_intrf,sensor_bayer_intrf,c_img_sen);
+        on tile[SENSOR_TILE]: mgmt_intrf(sensor_mgmt_intrf,bayer_mgmt_intrf);
+        on tile[SENSOR_TILE]: image_sensor_server(sensor_mgmt_intrf,sensor_bayer_intrf);
+        on tile[SENSOR_TILE]: bayer_if(bayer_mgmt_intrf,sensor_bayer_intrf,c_img_sen);
 
-        on tile[0]: app(c_img_sen,c_dc);
-        on tile[0]: display_controller(c_dc,c_lcd,c_sdram);
-        on tile[0]: lcd_server(c_lcd,lcdports);
-        on tile[0]: sdram_server(c_sdram,sdramports);
+        on tile[DISPLAY_TILE]: app(c_img_sen,c_dc);
+        on tile[DISPLAY_TILE]: display_controller(c_dc,c_lcd,c_sdram);
+        on tile[DISPLAY_TILE]: lcd_server(c_lcd,lcdports);
+        on tile[DISPLAY_TILE]: sdram_server(c_sdram,sdramports);
     }
     return 0;
 }

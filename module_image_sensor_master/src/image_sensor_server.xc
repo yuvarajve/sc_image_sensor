@@ -2,10 +2,11 @@
 // This software is freely distributable under a derivative of the
 // University of Illinois/NCSA Open Source License posted in
 // LICENSE.txt and at <http://github.xcore.com/>
-
+#include <stdio.h>
 #include <xs1.h>
 #include <platform.h>
 #include <print.h>
+#include <string.h>
 
 #include "pipeline_interface.h"
 #include "image_sensor_config.h"
@@ -24,7 +25,25 @@ on tile[1] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
 
 on tile[1] : image_sensor_ports imgports = { //circle slot
    XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_8C,
-   {XS1_PORT_1H, XS1_PORT_1I, 1000}, XS1_CLKBLK_1
+   XS1_CLKBLK_1
+};
+
+/**< global variables
+ * Sensor will get configured with these global variables initially
+ * Note: These configuration are compatible with LCD resolution (480x272)
+ * */
+unsigned lines_per_frame_g = CONFIG_WINDOW_HEIGHT;
+unsigned words_per_line_g = CONFIG_WINDOW_WIDTH/4;
+unsigned get_line_num_g = 0;
+
+mgmt_resolution_param_t sensor_resolution_param_g = {
+ 136, 106, 94, 4, 10
+};
+mgmt_ROI_param_t sensor_hei_wid_param_g = {
+  CONFIG_WINDOW_HEIGHT, CONFIG_WINDOW_WIDTH
+};
+mgmt_color_param_t sensor_color_param_g = {
+ RGB
 };
 
 /****************************************************************************************
@@ -60,28 +79,57 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
     char sensor_data_send_ptr_idx = 0;
     char sensor_ptr_release_idx = 0;
     mgmt_intrf_status_t sensor_if_status_l = APM_MGMT_FAILURE;
-    unsigned sensor_line_buf_1[CONFIG_WINDOW_WIDTH+8];
-    unsigned sensor_line_buf_2[CONFIG_WINDOW_WIDTH+8];
-    unsigned sensor_line_buf_3[CONFIG_WINDOW_WIDTH+8];
+    unsigned sensor_line_buf_1[MT9V034_MAX_WIDTH];
+    unsigned sensor_line_buf_2[MT9V034_MAX_WIDTH];
+    unsigned sensor_line_buf_3[MT9V034_MAX_WIDTH];
 
     unsigned * movable sensor_if_ptr[3] = {&sensor_line_buf_1[0], &sensor_line_buf_2[0], &sensor_line_buf_3[0]};
 
+    /**< Sensor configuraion array */
+    unsigned short sensor_config_array[E_SIZE_OF_CONFIG_ARRAY] = {0};
+
     /* Initialise image senor ports, i2c interface */
     config_image_sensor_ports();
-    if(CONFIG_SUCCESS == image_sensor_init(i2c_ports,CONFIG_IN_MASTER)) {
+    /* configure sensor with the default paramaters */
+    memcpy(sensor_config_array+0,&sensor_resolution_param_g,sizeof(mgmt_resolution_param_t));
+    memcpy(sensor_config_array+5,&sensor_hei_wid_param_g,sizeof(mgmt_ROI_param_t));
+    memcpy(sensor_config_array+7,&sensor_color_param_g,sizeof(unsigned short));
+
+    if(CONFIG_SUCCESS == image_sensor_init(i2c_ports,sensor_config_array,CONFIG_IN_MASTER)) {
         sensor_if_status_l = APM_MGMT_SUCCESS;
     }
 
     while(1){
 
         select {
-            case sensorif.apm_mgmt(mgmt_intrf_commands_t command):
-              if(command == SET_SCREEN_RESOLUTION)
+            case sensorif.apm_mgmt(mgmt_intrf_commands_t command, void * unsafe param):
+              if( (command == SET_SCREEN_RESOLUTION) && (param != NULL) ){
                   printstrln("sensor_if: Resoultion received from mgmt_if");
-              else if(command == START_OPERATION) {
+                  sensor_resolution_param_g = *(mgmt_resolution_param_t *)param;
+                  /* copy to sensor config array */
+                  memcpy(sensor_config_array+0,&sensor_resolution_param_g,sizeof(mgmt_resolution_param_t));
+              }
+              else if( (command == SET_COLOR_MODE) && (param != NULL) ){
+                  printstrln("sensor_if: Color Mode received from mgmt_if");
+                  sensor_color_param_g = *(mgmt_color_param_t *)param;
+                  /* copy to sensor config array */
+                  memcpy(sensor_config_array+7,&sensor_color_param_g,sizeof(unsigned short));
+              }
+              else if( (command == SET_REGION_OF_INTEREST) && (param != NULL) ){
+                  printstrln("sensor_if: Region of Interest received from mgmt_if");
+                  sensor_hei_wid_param_g = *(mgmt_ROI_param_t *)param;
+                  /* copy to sensor config array */
+                  memcpy(sensor_config_array+5,&sensor_hei_wid_param_g,sizeof(mgmt_ROI_param_t));
+              }
+              else if( (command == START_OPERATION) && (param == NULL) ) {
                   printstrln("sensor_if: Start operation received from mgmt_if");
-                  operation_started = 1;
-                  // TODO: Start filling the SDRAM frame buffer
+                  printstrln("sensor_if: Reconfiguring sensor....!!!");
+                  sensor_if_status_l = APM_MGMT_FAILURE;
+                  if(CONFIG_SUCCESS == image_sensor_init(i2c_ports,sensor_config_array,CONFIG_IN_MASTER)) {
+                      sensor_if_status_l = APM_MGMT_SUCCESS;
+                      operation_started = 1;
+                      get_line_num_g = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
+                  }
               }
               else if(command == STOP_OPERATION)
                   operation_started = 0;
@@ -93,10 +141,18 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
               sensor_if_status = sensor_if_status_l;
               break;
 
-            case operation_started => apm_us.get_new_line(unsigned * movable &line_buf_ptr): {
+            case operation_started => apm_us.get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t metadata) -> {unsigned line_num}: {
+              // for every first line of a new frame, send metadata.
+              if(get_line_num_g == 1)
+                  line_num = get_line_num_g;
+              else
+                  line_num = 0;
+              /* upstream interface should simply ignore this data if line_num is zero */
+
+              metadata = sensor_hei_wid_param_g;
               line_buf_ptr = move(sensor_if_ptr[sensor_data_send_ptr_idx++]);
               sensor_data_send_ptr_idx %= 3;
-              // TODO: get line from SDRAM
+              get_line_num_g = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
               }
               break;
 
@@ -107,3 +163,4 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
         }
     }
 }
+

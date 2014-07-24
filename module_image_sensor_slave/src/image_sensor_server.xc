@@ -7,6 +7,7 @@
 #include <platform.h>
 #include <print.h>
 #include <string.h>
+#include <timer.h>
 
 #include "pipeline_interface.h"
 #include "image_sensor_config.h"
@@ -28,14 +29,14 @@ typedef struct img_snsr_slave_mode_ports{
 }img_snsr_slave_mode_ports;
 
 // Port declaration
-on tile[1] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
+on tile[0] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
 
-on tile[1] : image_sensor_ports imgports = { //circle slot
+on tile[0] : image_sensor_ports imgports = { //circle slot
    XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_8C,
    XS1_CLKBLK_1
 };
 
-on tile[1] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
+on tile[0] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
   XS1_PORT_1E, XS1_PORT_1D, XS1_PORT_1P, XS1_PORT_1O
 };
 
@@ -139,7 +140,7 @@ static inline void trigger_exposure_stfrm_out(void)
 /****************************************************************************************
  *
  ***************************************************************************************/
-static inline unsigned get_line(unsigned buffer[]) {
+static inline unsigned get_line(line_buf_union_t buffer[]) {
 
    static unsigned no_of_lines = 0;
 
@@ -154,8 +155,8 @@ static inline unsigned get_line(unsigned buffer[]) {
    imgports_slave.stln_out <: 1;
    delay_ticks(690);
 
-   for(unsigned loop = 0; loop < words_per_line_g; loop++){
-       buffer[loop] = do_input(imgports.data_port);
+   for(unsigned idx = 0; idx < words_per_line_g; idx++){
+       buffer[idx].pixel_word = do_input(imgports.data_port);
    }
 
    // trigger stln_out low
@@ -184,11 +185,11 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
     char sensor_data_send_ptr_idx = 0;
     char sensor_ptr_release_idx = 0;
     mgmt_intrf_status_t sensor_if_status_l = APM_MGMT_FAILURE;
-    unsigned sensor_line_buf_1[MT9V034_MAX_WIDTH];
-    unsigned sensor_line_buf_2[MT9V034_MAX_WIDTH];
-    unsigned sensor_line_buf_3[MT9V034_MAX_WIDTH];
+    line_buf_union_t sensor_line_buf_1[MT9V034_MAX_WIDTH/4];
+    line_buf_union_t sensor_line_buf_2[MT9V034_MAX_WIDTH/4];
+    line_buf_union_t sensor_line_buf_3[MT9V034_MAX_WIDTH/4];
 
-    unsigned * movable sensor_if_ptr[3] = {&sensor_line_buf_1[0], &sensor_line_buf_2[0], &sensor_line_buf_3[0]};
+    line_buf_union_t * movable sensor_if_ptr[3] = {&sensor_line_buf_1[0], &sensor_line_buf_2[0], &sensor_line_buf_3[0]};
 
     /**< Sensor configuraion array */
     unsigned short sensor_config_array[E_SIZE_OF_CONFIG_ARRAY] = {0};
@@ -246,7 +247,7 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
               sensor_if_status = sensor_if_status_l;
               break;
 
-            case operation_started => apm_us.get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t * metadata) -> {unsigned line_num}: {
+            case operation_started => apm_us.get_new_line(line_buf_union_t * movable &line_buf_ptr, mgmt_ROI_param_t &metadata) -> {unsigned line_num}: {
               // for every first line of a new frame, send metadata.
               if(get_line_num_g == 1)
                   line_num = get_line_num_g;
@@ -254,14 +255,14 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
                   line_num = 0;
               /* upstream interface should simply ignore this data if line_num is zero */
 
-              *metadata = sensor_hei_wid_param_g;
+              metadata = sensor_hei_wid_param_g;
               line_buf_ptr = move(sensor_if_ptr[sensor_data_send_ptr_idx++]);
               sensor_data_send_ptr_idx %= 3;
               get_line_num_g = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
               }
               break;
 
-            case operation_started => apm_us.release_line_buf(unsigned * movable &line_buf_ptr):
+            case operation_started => apm_us.release_line_buf(line_buf_union_t * movable &line_buf_ptr):
               sensor_if_ptr[sensor_ptr_release_idx++] = move(line_buf_ptr);
               sensor_ptr_release_idx %= 3;
               break;
