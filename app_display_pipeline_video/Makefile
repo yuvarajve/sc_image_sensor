@@ -19,6 +19,10 @@ USED_MODULES = module_display_controller module_image_sensor_config module_image
 XCC_FLAGS_Debug = -O3 -g -save-temps -report
 XCC_FLAGS_Release = -O3 -g -save-temps -report
 
+# The XCORE_ARM_PROJECT variable, if set to 1, configures this
+# project to create both xCORE and ARM binaries.
+XCORE_ARM_PROJECT = 0
+
 # The VERBOSE variable, if set to 1, enables verbose output from the make system.
 VERBOSE = 0
 

@@ -28,15 +28,16 @@ typedef struct img_snsr_slave_mode_ports{
    in port led_out; // not used
 }img_snsr_slave_mode_ports;
 
+#define SENSOR_TILE  1
 // Port declaration
-on tile[0] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
+on tile[SENSOR_TILE] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
 
-on tile[0] : image_sensor_ports imgports = { //circle slot
+on tile[SENSOR_TILE] : image_sensor_ports imgports = { //circle slot
    XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_8C,
    XS1_CLKBLK_1
 };
 
-on tile[0] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
+on tile[SENSOR_TILE] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
   XS1_PORT_1E, XS1_PORT_1D, XS1_PORT_1P, XS1_PORT_1O
 };
 
@@ -46,7 +47,6 @@ on tile[0] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
  * */
 unsigned lines_per_frame_g = CONFIG_WINDOW_HEIGHT;
 unsigned words_per_line_g = CONFIG_WINDOW_WIDTH/4;
-unsigned get_line_num_g = 0;
 
 mgmt_resolution_param_t sensor_resolution_param_g = {
  136, 106, 94, 4, 10
@@ -161,7 +161,7 @@ static inline unsigned get_line(line_buf_union_t buffer[]) {
 
    // trigger stln_out low
    imgports_slave.stln_out <: 0;
-   delay_ticks(2000);
+   delay_ticks(2100);
 
    no_of_lines++;
    no_of_lines %= lines_per_frame_g;
@@ -182,8 +182,11 @@ static inline unsigned get_line(line_buf_union_t buffer[]) {
 void image_sensor_server(interface mgmt_interface server sensorif, interface pipeline_interface server apm_us) {
 
     char operation_started = 0;
+    // added this to guard, get line starts only after responding to management interface
+    char operation_start_responded = 0;
     char sensor_data_send_ptr_idx = 0;
     char sensor_ptr_release_idx = 0;
+    unsigned get_line_num = 0;
     mgmt_intrf_status_t sensor_if_status_l = APM_MGMT_FAILURE;
     line_buf_union_t sensor_line_buf_1[MT9V034_MAX_WIDTH/4];
     line_buf_union_t sensor_line_buf_2[MT9V034_MAX_WIDTH/4];
@@ -234,35 +237,41 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
                   if(CONFIG_SUCCESS == image_sensor_init(i2c_ports,sensor_config_array,CONFIG_IN_SLAVE)) {
                       sensor_if_status_l = APM_MGMT_SUCCESS;
                       operation_started = 1;
-                      get_line_num_g = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
+                      operation_start_responded = 0;
                   }
               }
-              else if(command == STOP_OPERATION)
+              else if(command == STOP_OPERATION) {
                   operation_started = 0;
+                  operation_start_responded = 0;
+              }
 
               sensorif.request_response();
               break;
 
             case sensorif.get_response(void) -> mgmt_intrf_status_t sensor_if_status:
               sensor_if_status = sensor_if_status_l;
-              break;
-
-            case operation_started => apm_us.get_new_line(line_buf_union_t * movable &line_buf_ptr, mgmt_ROI_param_t &metadata) -> {unsigned line_num}: {
-              // for every first line of a new frame, send metadata.
-              if(get_line_num_g == 1)
-                  line_num = get_line_num_g;
-              else
-                  line_num = 0;
-              /* upstream interface should simply ignore this data if line_num is zero */
-
-              metadata = sensor_hei_wid_param_g;
-              line_buf_ptr = move(sensor_if_ptr[sensor_data_send_ptr_idx++]);
-              sensor_data_send_ptr_idx %= 3;
-              get_line_num_g = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
+              if(operation_started == 1) {
+                  get_line_num = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
+                  operation_start_responded = 1;
               }
               break;
 
-            case operation_started => apm_us.release_line_buf(line_buf_union_t * movable &line_buf_ptr):
+            case operation_start_responded => apm_us.get_new_line(line_buf_union_t * movable &line_buf_ptr, mgmt_ROI_param_t &metadata) -> {unsigned line_num}: {
+              // for every first line of a new frame, send metadata.
+              if(get_line_num == 1) {
+                  line_num = get_line_num;
+                  metadata = sensor_hei_wid_param_g;
+              }
+              else
+                  line_num = 0;
+
+              line_buf_ptr = move(sensor_if_ptr[sensor_data_send_ptr_idx++]);
+              sensor_data_send_ptr_idx %= 3;
+              get_line_num = get_line(sensor_if_ptr[sensor_data_send_ptr_idx]);
+              }
+              break;
+
+            case operation_start_responded => apm_us.release_line_buf(line_buf_union_t * movable &line_buf_ptr):
               sensor_if_ptr[sensor_ptr_release_idx++] = move(line_buf_ptr);
               sensor_ptr_release_idx %= 3;
               break;

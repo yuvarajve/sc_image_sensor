@@ -15,8 +15,10 @@
 #include "sdram.h"
 #include "display_controller.h"
 
-#define DISPLAY_TILE  1
-#define SENSOR_TILE   0
+#define DISPLAY_TILE  0
+#define SENSOR_TILE   1
+
+#define NEW_INTERPOLATION  1 /**< Enable if pixel double interpolation algorithm has to be followed */
 
 on tile[DISPLAY_TILE] : lcd_ports lcdports = { //triangle slot
   XS1_PORT_1I, XS1_PORT_1L, XS1_PORT_16B, XS1_PORT_1J, XS1_PORT_1K, XS1_CLKBLK_1 };
@@ -145,7 +147,11 @@ void mgmt_intrf(interface mgmt_interface client mgr_sensor,
 
 #pragma unsafe arrays
 static inline unsafe void get_row(streaming chanend c, unsigned * unsafe dataPtr, unsigned width){
+#if NEW_INTERPOLATION
+    unsigned n_data = width/2;
+#else
     unsigned n_data = width/4;
+#endif
     for (unsigned i=0; i<n_data; i++){
         c :> dataPtr[i];
     }
@@ -161,7 +167,7 @@ static inline void store_row (chanend c_dc, unsigned row, unsigned frBuf, intptr
 static inline unsigned short rgb888_to_rgb565(char b, char g, char r) {
   return (unsigned short)((r >> 3) & 0x1F) | ((unsigned short)((g >> 2) & 0x3F) << 5) | ((unsigned short)((b >> 3) & 0x1F) << 11);
 }
-
+#if !NEW_INTERPOLATION
 #pragma unsafe arrays
 void color_interpolation(chanend c_dc, unsigned frBuf, unsigned height, unsigned width){
     unsigned buf[3][MAX_WIDTH/2], rgb565[MAX_WIDTH/2];
@@ -250,11 +256,16 @@ void color_interpolation(chanend c_dc, unsigned frBuf, unsigned height, unsigned
     }
 
 }
+#endif
 #pragma unsafe arrays
 void image_sensor_get_frame(streaming chanend c_imgSensor, chanend c_dispCont, unsigned frBuf,
         unsigned height, unsigned width){
-    unsigned data1[MAX_WIDTH/4];//, data2[MAX_WIDTH/4];
-    unsigned * /*unsafe tempPtr, * */unsafe readBufPtr;//, * unsafe storeBufPtr;
+#if NEW_INTERPOLATION
+    unsigned data1[MAX_WIDTH/2];
+#else
+    unsigned data1[MAX_WIDTH/4];
+#endif
+    unsigned * unsafe readBufPtr;
 
     // Get frame & store
     unsafe {
@@ -268,10 +279,10 @@ void image_sensor_get_frame(streaming chanend c_imgSensor, chanend c_dispCont, u
 
         store_row(c_dispCont,height-1,frBuf,(intptr_t)readBufPtr);
     }
-
+#if !NEW_INTERPOLATION
     // Color interpolation
     color_interpolation(c_dispCont, frBuf, height, width);
-
+#endif
 }
 void app(streaming chanend c_img, chanend c_dc){
 
@@ -290,9 +301,11 @@ void app(streaming chanend c_img, chanend c_dc){
 
         display_controller_frame_buffer_commit(c_dc, frBuf[frBufIndex]);
         delay_milliseconds(10);   // To remove flicker
-
     }
 }
+#define LINE_0                  0
+#define LINE_1                  1
+#define NOF_LINE_TB_PROCESSED   2
 /****************************************************************************************
  *
  ***************************************************************************************/
@@ -303,11 +316,16 @@ void bayer_if(interface mgmt_interface server bayerif,
     // added this to guard, get new line starts only after responding to management interface
     char operation_start_responded = 0;
     //char nof_lines_for_bayer_process = 0;
-    line_buf_union_t * movable bayer_line_buf[2];
+    line_buf_union_t * movable bayer_line_buf[NOF_LINE_TB_PROCESSED];
     // bayer mode parameter from management interface
     mgmt_bayer_param_t bayer_mode_l = NOT_USED_MODE;
     // metadata required for bayer
     mgmt_ROI_param_t metadata;
+#if NEW_INTERPOLATION
+    line_buf_union_t rgb565_pixdbl_buf[NOF_LINE_TB_PROCESSED][MAX_WIDTH/2];
+    unsigned char red = 0,green0 = 0, green1 = 0, blue = 0;
+    unsigned roi_received = 0;
+#endif
 
     while(1){
 
@@ -340,8 +358,42 @@ void bayer_if(interface mgmt_interface server bayerif,
                 break;
 
             (operation_start_responded) => default : {
+#if NEW_INTERPOLATION
+                unsigned loop = 0;
+                roi_received = apm_ds.get_new_line(bayer_line_buf[LINE_0],metadata);
+                               apm_ds.get_new_line(bayer_line_buf[LINE_1],metadata);
 
-              if(apm_ds.get_new_line(bayer_line_buf[0],metadata)) {
+                for(unsigned idx = 0; idx < metadata.width/4; idx++){
+                    {green0,red } = get_pixel_char_data((pixel_buf_union_t *)&(bayer_line_buf[0]+idx)->pixel_short.byte_1);
+                    {blue,green1} = get_pixel_char_data((pixel_buf_union_t *)&(bayer_line_buf[1]+idx)->pixel_short.byte_1);
+                    rgb565_pixdbl_buf[LINE_0][loop].pixel_short.byte_1 = rgb888_to_rgb565(blue,green0,red);
+                    rgb565_pixdbl_buf[LINE_0][loop].pixel_short.byte_2 = rgb888_to_rgb565(blue,green0,red);
+                    rgb565_pixdbl_buf[LINE_1][loop].pixel_short.byte_1 = rgb888_to_rgb565(blue,green1,red);
+                    rgb565_pixdbl_buf[LINE_1][loop].pixel_short.byte_2 = rgb888_to_rgb565(blue,green1,red);
+
+                    //send line zero
+                    img_sen <: rgb565_pixdbl_buf[LINE_0][loop++].pixel_word;
+
+                    {green0,red } = get_pixel_char_data((pixel_buf_union_t *)&(bayer_line_buf[0]+idx)->pixel_short.byte_2);
+                    {blue,green1} = get_pixel_char_data((pixel_buf_union_t *)&(bayer_line_buf[1]+idx)->pixel_short.byte_2);
+                    rgb565_pixdbl_buf[LINE_0][loop].pixel_short.byte_1 = rgb888_to_rgb565(blue,green0,red);
+                    rgb565_pixdbl_buf[LINE_0][loop].pixel_short.byte_2 = rgb888_to_rgb565(blue,green0,red);
+                    rgb565_pixdbl_buf[LINE_1][loop].pixel_short.byte_1 = rgb888_to_rgb565(blue,green1,red);
+                    rgb565_pixdbl_buf[LINE_1][loop].pixel_short.byte_2 = rgb888_to_rgb565(blue,green1,red);
+
+                    //send line zero
+                    img_sen <: rgb565_pixdbl_buf[LINE_0][loop++].pixel_word;
+                }
+
+                apm_ds.release_line_buf(bayer_line_buf[LINE_0]);
+                apm_ds.release_line_buf(bayer_line_buf[LINE_1]);
+
+                //send line one
+                for(unsigned idx = 0; idx < metadata.width/2; idx++)
+                  img_sen <: rgb565_pixdbl_buf[LINE_1][idx].pixel_word;
+
+#else
+              if(apm_ds.get_new_line(bayer_line_buf[LINE_0],metadata)) {
                  //do bayer operation based on metadata here...
                  /*
                   //How to use the bayer_line_buf
@@ -358,9 +410,10 @@ void bayer_if(interface mgmt_interface server bayerif,
               }
 
               for(unsigned l = 0; l < LCD_WIDTH/4; l++){
-                  img_sen <: bayer_line_buf[0][l];
+                  img_sen <: bayer_line_buf[LINE_0][l];
               }
-              apm_ds.release_line_buf(bayer_line_buf[0]);
+              apm_ds.release_line_buf(bayer_line_buf[LINE_0]);
+#endif
             }
             break;
         }
