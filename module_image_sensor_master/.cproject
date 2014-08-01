@@ -165,6 +165,13 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert/doc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.xc.compiler.input.1636900486" name="XC" superClass="com.xmos.cdt.xc.compiler.input"/>
 							</tool>
@@ -283,6 +290,13 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert/doc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.c.compiler.input.c.466328572" name="C" superClass="com.xmos.cdt.c.compiler.input.c"/>
 							</tool>
@@ -407,6 +421,13 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_pipeline_interface/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_image_sensor_config}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram_slicekit_support/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_sdram_slicekit_support}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert/doc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/module_xassert}&quot;"/>
 								</option>
 								<inputType id="com.xmos.cdt.cxx.compiler.input.cpp.283551200" name="C++" superClass="com.xmos.cdt.cxx.compiler.input.cpp"/>
 							</tool>

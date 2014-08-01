@@ -188,11 +188,11 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
     char sensor_ptr_release_idx = 0;
     unsigned get_line_num = 0;
     mgmt_intrf_status_t sensor_if_status_l = APM_MGMT_FAILURE;
-    line_buf_union_t sensor_line_buf_1[MT9V034_MAX_WIDTH/4];
-    line_buf_union_t sensor_line_buf_2[MT9V034_MAX_WIDTH/4];
-    line_buf_union_t sensor_line_buf_3[MT9V034_MAX_WIDTH/4];
+    unsigned sensor_line_buf_1[MT9V034_MAX_WIDTH];
+    unsigned sensor_line_buf_2[MT9V034_MAX_WIDTH];
+    unsigned sensor_line_buf_3[MT9V034_MAX_WIDTH];
 
-    line_buf_union_t * movable sensor_if_ptr[3] = {&sensor_line_buf_1[0], &sensor_line_buf_2[0], &sensor_line_buf_3[0]};
+    unsigned * movable sensor_if_ptr[3] = {&sensor_line_buf_1[0], &sensor_line_buf_2[0], &sensor_line_buf_3[0]};
 
     /**< Sensor configuraion array */
     unsigned short sensor_config_array[E_SIZE_OF_CONFIG_ARRAY] = {0};
@@ -256,7 +256,7 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
               }
               break;
 
-            case operation_start_responded => apm_us.get_new_line(line_buf_union_t * movable &line_buf_ptr, mgmt_ROI_param_t &metadata) -> {unsigned line_num}: {
+            case operation_started => apm_us.get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t &metadata) -> {unsigned line_num}: {
               // for every first line of a new frame, send metadata.
               if(get_line_num == 1) {
                   line_num = get_line_num;
@@ -271,7 +271,7 @@ void image_sensor_server(interface mgmt_interface server sensorif, interface pip
               }
               break;
 
-            case operation_start_responded => apm_us.release_line_buf(line_buf_union_t * movable &line_buf_ptr):
+            case operation_started => apm_us.release_line_buf(unsigned * movable &line_buf_ptr):
               sensor_if_ptr[sensor_ptr_release_idx++] = move(line_buf_ptr);
               sensor_ptr_release_idx %= 3;
               break;

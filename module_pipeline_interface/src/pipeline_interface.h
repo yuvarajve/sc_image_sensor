@@ -19,7 +19,8 @@ typedef enum {
     BAYER_MODE,
     // Common commands
     START_OPERATION,
-    STOP_OPERATION
+    STOP_OPERATION,
+    FRAME_CAPTURE
 }mgmt_intrf_commands_t;
 
 typedef enum {
@@ -81,8 +82,8 @@ interface mgmt_interface {
 };
 
 interface pipeline_interface {
-  [[guarded]] unsigned get_new_line(line_buf_union_t * movable &line_buf_ptr, mgmt_ROI_param_t &metadata);
-  [[guarded]] void release_line_buf(line_buf_union_t * movable &line_buf_ptr);
+  [[guarded]] unsigned get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t &metadata);
+  [[guarded]] void release_line_buf(unsigned * movable &line_buf_ptr);
 };
 
 #endif /* PIPELINE_INTERFACE_H_ */
