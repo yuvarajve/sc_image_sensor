@@ -18,7 +18,11 @@ typedef struct image_sensor_ports{
   in port frame_valid;
   in port line_valid;
   in buffered port:32 data_port;
-  clock clk1;
+#ifdef XCOREXA
+  out port sys_clk;
+  clock clkblk_2;
+#endif
+  clock clkblk_1;
 }image_sensor_ports;
 
 typedef struct img_snsr_slave_mode_ports{
@@ -27,6 +31,22 @@ typedef struct img_snsr_slave_mode_ports{
    out port stln_out;
    in port led_out; // not used
 }img_snsr_slave_mode_ports;
+
+#ifdef XCOREXA
+r_i2c i2c_ports = { XS1_PORT_1G, XS1_PORT_1H, 1000};
+
+image_sensor_ports imgports = {
+   XS1_PORT_1E, XS1_PORT_1F, XS1_PORT_1K, XS1_PORT_8D,
+   XS1_PORT_1L, XS1_CLKBLK_2,XS1_CLKBLK_1
+};
+
+//img_snsr_slave_mode_ports imgports_slave = { // circle slot
+//  XS1_PORT_1E, XS1_PORT_1D, XS1_PORT_1P, XS1_PORT_1O
+//};
+//TODO: Remove this
+#error "slave mode is not support on xCORExa_starterKIT, try on visionKIT"
+
+#else // on L2 sliceKIT core board
 
 #define SENSOR_TILE  1
 // Port declaration
@@ -40,7 +60,7 @@ on tile[SENSOR_TILE] : image_sensor_ports imgports = { //circle slot
 on tile[SENSOR_TILE] : img_snsr_slave_mode_ports imgports_slave = { // circle slot
   XS1_PORT_1E, XS1_PORT_1D, XS1_PORT_1P, XS1_PORT_1O
 };
-
+#endif
 /**< global variables
  * Sensor will get configured with these global variables initially
  * Note: These configuration are compatible with LCD resolution (480x272)
@@ -63,11 +83,16 @@ mgmt_color_param_t sensor_color_param_g = {
  ***************************************************************************************/
 static inline void config_image_sensor_ports(void) {
 
-    configure_out_port(imgports_slave.stln_out, imgports.clk1,0);
-    configure_clock_src(imgports.clk1, imgports.pix_clk);   // Port clock setup
-    configure_in_port(imgports.data_port,imgports.clk1);
-    configure_in_port(imgports.line_valid,imgports.clk1);
-    start_clock(imgports.clk1);
+#ifdef XCOREXA //generate sys_clk for sensor
+    configure_clock_rate_at_least(imgports.clkblk_2,100,4);
+    configure_port_clock_output(imgports.sys_clk,imgports.clkblk_2);
+    start_clock(imgports.clkblk_2);
+#endif
+    configure_out_port(imgports_slave.stln_out, imgports.clkblk_1,0);
+    configure_clock_src(imgports.clkblk_1, imgports.pix_clk);   // Port clock setup
+    configure_in_port(imgports.data_port,imgports.clkblk_1);
+    configure_in_port(imgports.line_valid,imgports.clkblk_1);
+    start_clock(imgports.clkblk_1);
 }
 /****************************************************************************************
  *
@@ -140,7 +165,7 @@ static inline void trigger_exposure_stfrm_out(void)
 /****************************************************************************************
  *
  ***************************************************************************************/
-static inline unsigned get_line(line_buf_union_t buffer[]) {
+static inline unsigned get_line(unsigned buffer[]) {
 
    static unsigned no_of_lines = 0;
 
@@ -156,7 +181,7 @@ static inline unsigned get_line(line_buf_union_t buffer[]) {
    delay_ticks(690);
 
    for(unsigned idx = 0; idx < words_per_line_g; idx++){
-       buffer[idx].pixel_word = do_input(imgports.data_port);
+       buffer[idx] = do_input(imgports.data_port);
    }
 
    // trigger stln_out low

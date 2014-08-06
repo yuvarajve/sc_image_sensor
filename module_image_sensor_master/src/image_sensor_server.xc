@@ -6,6 +6,7 @@
 #include <xs1.h>
 #include <platform.h>
 #include <print.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "xassert.h"
@@ -20,19 +21,36 @@ typedef struct image_sensor_ports{
   in port frame_valid;
   in port line_valid;
   in buffered port:32 data_port;
-  clock clk1;
+#ifdef XCOREXA
+  out port sys_clk;
+  clock clkblk_2;
+#endif
+  clock clkblk_1;
 }image_sensor_ports;
 
-// Port declaration
-on tile[SDRAM_L16_CIRCLE_TILE] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
+#ifdef XCOREXA
+r_i2c i2c_ports = { XS1_PORT_1G, XS1_PORT_1H, 1000};
 
-on tile[SDRAM_L16_CIRCLE_TILE] : image_sensor_ports imgports = { //circle slot
+image_sensor_ports imgports = {
+   XS1_PORT_1E, XS1_PORT_1F, XS1_PORT_1K, XS1_PORT_8D,
+   XS1_PORT_1L, XS1_CLKBLK_2,XS1_CLKBLK_1
+};
+
+sdram_ports sdramports = SDRAM_XCOREXA_PORTS(XS1_CLKBLK_3);
+
+#else // on L2 sliceKIT core board
+
+#define SENSOR_TILE  1
+// Port declaration
+on tile[SENSOR_TILE] : r_i2c i2c_ports = { XS1_PORT_1H, XS1_PORT_1I, 1000};
+
+on tile[SENSOR_TILE] : image_sensor_ports imgports = { //circle slot
    XS1_PORT_1J, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_8C,
    XS1_CLKBLK_1
 };
 
 on tile [SDRAM_L16_SQUARE_TILE] : sdram_ports sdramports = SDRAM_L16_SQUARE_PORTS(XS1_CLKBLK_2);
-
+#endif
 interface local_pipe {
   [[guarded]] void inform_state(mgmt_intrf_commands_t command,void * unsafe param);
 };
@@ -41,9 +59,14 @@ interface local_pipe {
  ***************************************************************************************/
 static inline void config_image_sensor_ports(void) {
 
-    configure_clock_src(imgports.clk1, imgports.pix_clk);   // Port clock setup
-    configure_in_port_strobed_slave(imgports.data_port, imgports.line_valid, imgports.clk1);
-    start_clock(imgports.clk1);
+#ifdef XCOREXA //generate sys_clk for sensor
+    configure_clock_rate_at_least(imgports.clkblk_2,100,4);
+    configure_port_clock_output(imgports.sys_clk,imgports.clkblk_2);
+    start_clock(imgports.clkblk_2);
+#endif
+    configure_clock_src(imgports.clkblk_1, imgports.pix_clk);   // Port clock setup
+    configure_in_port_strobed_slave(imgports.data_port, imgports.line_valid, imgports.clkblk_1);
+    start_clock(imgports.clkblk_1);
 }
 /****************************************************************************************
  *
@@ -58,15 +81,23 @@ static inline unsigned do_input(in buffered port:32 data_port) {
  ***************************************************************************************/
 static inline void get_frame(streaming chanend c_imgSensor,unsigned width,unsigned height) {
 
-  unsigned nof_data_in_frame = (width * height)/4;
+  unsigned line_buf[MT9V034_MAX_WIDTH];
+  uintptr_t line_buf_ptr;
+
+  asm volatile("mov %0, %1": "=r"(line_buf_ptr):"r"(line_buf));
+
   //TODO: Add code here to validate vertical blanking period using line_valid pin
   //TODO: remove this frame_valid pin check after implementing the above code
   imgports.frame_valid when pinseq(0) :> void;
   imgports.frame_valid when pinseq(1) :> void; // wait for a valid frame
 
   clearbuf(imgports.data_port);
-  for(unsigned idx = 0; idx < nof_data_in_frame; idx++) {
-      c_imgSensor <: do_input(imgports.data_port);
+  for(unsigned loop = 0; loop < height; loop++) {
+    for(unsigned idx = 0; idx < (width/4); idx++) {
+        line_buf[idx] = do_input(imgports.data_port);
+    }
+    // send the buffer pointer to sdram client
+    c_imgSensor <: line_buf_ptr;
   }
 
 }
@@ -170,15 +201,15 @@ static inline void capture_incoming_line(streaming chanend c_img_sen,
                                          unsigned &put_line_num,
                                          unsigned dataPtr[])
 {
-  static unsigned no_of_lines = 0;
+    static unsigned no_of_lines = 0;
+    uintptr_t line_buf_ptr;
 
-  for (unsigned i=0; i<words_per_line; i++) {
-      c_img_sen :> dataPtr[i];
-      }
+    c_img_sen :> line_buf_ptr;
+    asm volatile("mov %0, %1": "=r"(line_buf_ptr):"r"(dataPtr));
 
-  no_of_lines++;
-  put_line_num = no_of_lines;
-  no_of_lines %= lines_per_frame;
+    no_of_lines++;
+    put_line_num = no_of_lines;
+    no_of_lines %= lines_per_frame;
 }
 void image_sensor_sdram_client(streaming chanend c_img_sen,
                                streaming chanend c_sdram_server,
@@ -189,6 +220,7 @@ void image_sensor_sdram_client(streaming chanend c_img_sen,
   char sensor_data_send_ptr_idx = 0;
   char sensor_ptr_release_idx = 0;
   char frame_capture_send = 0;
+  char first_frame_completed = 0;
 
   unsigned get_line_num = 0;
   unsigned wr_bank = 0, wr_row = 0, wr_col = 0;
@@ -202,15 +234,14 @@ void image_sensor_sdram_client(streaming chanend c_img_sen,
   unsigned * movable sensor_data_rx_ptr = &sensor_line_buf_1[0];
   unsigned * movable sensor_data_tx_ptr[2] = {&sensor_line_buf_2[0],&sensor_line_buf_3[0]};
 
-  mgmt_ROI_param_t        mgmt_roi_l;
+  mgmt_ROI_param_t  mgmt_roi_l;
   set_thread_fast_mode_on();
   s_sdram_state sdram_state;
   sdram_init_state(c_sdram_server, sdram_state);
 
   while(1) {
     select {
-
-//#pragma ordered
+#pragma ordered
       case operation_started => capture_incoming_line(c_img_sen,(mgmt_roi_l.width/4),mgmt_roi_l.height,get_line_num,sensor_data_rx_ptr): {
           // donot store incoming frames into SDRAM unless and until one frame is processed after storing two full frames
           // TODO: how to identify the first line of the frame???
@@ -224,6 +255,8 @@ void image_sensor_sdram_client(streaming chanend c_img_sen,
               //printstr("frame capture completed..."); printuintln(nof_lines_produced);
               // clear this flag, so that the signal is send to receive next frame
               frame_capture_send = 0;
+              if(!first_frame_completed)
+                  first_frame_completed = 1;
             }
           }
           else {
@@ -234,7 +267,7 @@ void image_sensor_sdram_client(streaming chanend c_img_sen,
         }
         break;
 
-      case operation_started => apm_us.get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t &metadata) -> {unsigned line_num}: {
+      case (operation_started && first_frame_completed) => apm_us.get_new_line(unsigned * movable &line_buf_ptr, mgmt_ROI_param_t &metadata) -> {unsigned line_num}: {
           if(get_line_num == 1) {
             line_num = get_line_num;
             metadata = mgmt_roi_l;

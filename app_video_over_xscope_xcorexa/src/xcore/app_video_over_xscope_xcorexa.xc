@@ -13,8 +13,7 @@
 #include "pipeline_interface.h"
 #include "image_sensor_server.h"
 
-#define SENSOR_TILE   1
-
+#warning "only master mode is supported on xCORExa_starterKIT"
 /****************************************************************************************
  *
  ***************************************************************************************/
@@ -226,9 +225,9 @@ int main(void) {
     interface pipeline_interface sensor_bayer_intrf;
 
     par {
-        on tile[SENSOR_TILE]: mgmt_intrf(sensor_mgmt_intrf,bayer_mgmt_intrf);
-        on tile[SENSOR_TILE]: image_sensor_server(sensor_mgmt_intrf,sensor_bayer_intrf);
-        on tile[SENSOR_TILE]: bayer_if(bayer_mgmt_intrf,sensor_bayer_intrf);
+        mgmt_intrf(sensor_mgmt_intrf,bayer_mgmt_intrf);
+        image_sensor_server(sensor_mgmt_intrf,sensor_bayer_intrf);
+        bayer_if(bayer_mgmt_intrf,sensor_bayer_intrf);
     }
     return 0;
 }
